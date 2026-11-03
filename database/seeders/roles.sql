@@ -1,0 +1,4 @@
+INSERT INTO roles (nombre) VALUES
+('ESTUDIANTE'),
+('PROFESOR'),
+('ADMINISTRADOR');
