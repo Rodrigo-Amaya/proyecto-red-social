@@ -10,14 +10,14 @@
         //========== GET ==========
 
         public function listarUsuarios(){
-            $sql = "SELECT * FROM usuarios";
+            $sql = "SELECT * FROM usuarios WHERE bloqueo_usuario = 0";
             $pacientes = $this->conn->query($sql);
             return $pacientes->fetch_all(MYSQLI_ASSOC);
         }
 
         //---Busqueda por ID---
         public function buscarPorID($id){
-            $sql = ("SELECT * FROM usuarios WHERE id_usuario = ?");
+            $sql = ("SELECT * FROM usuarios WHERE id_usuario = ? AND bloqueo_usuario = 0");
             $stmt = $this->conn->prepare($sql);
             $stmt->bind_param("i", $id); 
             
@@ -28,7 +28,7 @@
 
         //---Busqueda mediante filtros---
         public function buscarPorFiltros($busqueda, $correo, $nivel, $orden){
-            $sql = ("SELECT *  FROM usuarios WHERE bloqueo_usuario = false ");
+            $sql = ("SELECT *  FROM usuarios WHERE bloqueo_usuario = 0 ");
             $parametros = [];
             $tipoParametro = "";
 
@@ -124,7 +124,7 @@
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== PUT ==========
         public function actualizarUsuario($id, $nombre, $correo, $contrasena_anterior,$contrasena, $nivel, $foto){
-            $validacion = $this->validarPUT($id, $contrasena_anterior, $nivel);
+            $validacion = $this->validarPUT($id, $contrasena_anterior, $correo, $nivel);
             
             //si pasa todas las validaciones
             if($validacion !== 0){
@@ -143,9 +143,9 @@
         }
 
         //validaciones para PUT
-        public function validarPUT($id, $contrasena, $nivel){
+        public function validarPUT($id, $contrasena, $correo, $nivel){
             //validar si la id existe en la base de datos la ID
-            $sql = "SELECT * FROM usuarios WHERE id_usuario = ?";
+            $sql = "SELECT * FROM usuarios WHERE id_usuario = ? AND bloqueo_usuario = 0";
             $stmt = $this->conn->prepare($sql);
             $stmt->bind_param("i", $id); 
             $stmt->execute();
@@ -163,6 +163,15 @@
             if(!password_verify($contrasena, $usuario['contrasena'])){
                 return 2;
             }
+
+            //validar si el correo ya esta siendo usado por otro usuario
+            $sql = "SELECT id_usuario FROM usuarios WHERE correo = ? AND id_usuario != ?";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("si", $correo, $id);
+            $stmt->execute();
+            if ($stmt->get_result()->num_rows > 0) {
+                return 3;
+            }
             
             //validar si el nivel de estudio se encuentra en la base de datos
             $sql = "SELECT id_nivel FROM nivel_estudio WHERE id_nivel = ?";
@@ -170,9 +179,88 @@
             $stmt->bind_param("i", $nivel); 
             $stmt->execute();
             if ($stmt->get_result()->num_rows === 0) {
-                return 3;
+                return 4;
             }
             return 0;
         }
+
+        //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        //========== DELETE ==========
+        public function eliminarUsuario($id){
+            $validacion = $this->validarDELETE($id);
+            
+            //si pasa todas las validaciones
+            if($validacion !== true){
+                return $validacion;
+            }
+
+            $sql = "UPDATE usuarios SET bloqueo_usuario = 1 WHERE id_usuario = ?";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("i", $id); 
+            $stmt->execute();
+
+            return true;
+        }
+
+        //validaciones DELETE
+        public function validarDELETE($id){
+            $sql = "SELECT id_usuario FROM usuarios
+            WHERE id_usuario = ? AND bloqueo_usuario = 0";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            if ($stmt->get_result()->num_rows === 0) {
+                return false;
+            }
+            return true;
+        }
+
+        //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        //========== PATCH ==========
+        public function cambiarRolUsuario($id, $rol){
+            $validacion = $this->validarPATCH($id, $rol);
+
+            $set = "";
+            
+            //si pasa todas las validaciones
+            if($validacion !== 0){
+                return $validacion;
+            }
+
+            if($rol === '2'){
+                $set .= " es_profesor = 1,";
+            }
+
+            $sql = "UPDATE usuarios SET " . $set . " id_rol = ? WHERE id_usuario = ?";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("ii", $rol, $id); 
+            $stmt->execute();
+
+            return 0;
+        }
+
+        //validaciones PATCH
+        public function validarPATCH($id, $rol){
+            //validar si la id existe en la base de datos la ID
+            $sql = "SELECT * FROM usuarios WHERE id_usuario = ? AND bloqueo_usuario = 0";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("i", $id); 
+            $stmt->execute();
+            if ($stmt->get_result()->num_rows == 0) {
+                return 1;
+            }
+
+            //validar si el rol existe
+            $sql = "SELECT * FROM roles WHERE id_rol = ?";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("i", $rol); 
+            $stmt->execute();
+            if ($stmt->get_result()->num_rows == 0) {
+                return 2;
+            }
+
+            return 0;
+        }
+
     }
 ?>

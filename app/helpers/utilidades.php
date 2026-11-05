@@ -70,3 +70,24 @@ function validarFecha($fecha){
         respuesta(400, ['success' => false, 'Mensaje:' => 'Tipo de fecha ingresada no es valida']);
     }
 }
+
+//=====================================================================
+function validarContrasena(string $contrasena) {
+    $patronMayus = '/^(?=.*[A-Z]).+$/';
+    $patronEspecial = '/^(?=.*[^a-zA-Z0-9]).+$/';
+    $patronNum = '/^(?=.*[0-9]).+$/';
+
+    if(mb_strlen($contrasena) < 8){
+        respuesta(400, ['success' => false, 'Mensaje' => 'La contraseña debe ser de mas de 8 caracteres']);
+    }
+
+    if(preg_match($patronMayus, $contrasena) === 0){
+        respuesta(400, ['success' => false, 'Mensaje:' => 'La contraseña debe tener al menos una letra en mayuscula']);
+    }
+    if(preg_match($patronEspecial, $contrasena) === 0){
+        respuesta(400, ['success' => false, 'Mensaje:' => 'La contraseña debe tener al menos un caracter especial']);
+    }
+    if(preg_match($patronNum, $contrasena) === 0){
+        respuesta(400, ['success' => false, 'Mensaje:' => 'La contraseña debe tener al menos un numero']);
+    }
+}

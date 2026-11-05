@@ -32,6 +32,8 @@
                 match ($metodo) {
                     'GET'    => $this->obtenerUsuario($idUsuario),
                     'PUT'    => $this->actualizarusuario($idUsuario),
+                    'DELETE' => $this->eliminarUsuario($idUsuario),
+                    'PATCH'  => $this->cambiarRolUsuario($idUsuario),
                     default  => noPermitido(),
                 };
             }
@@ -45,12 +47,12 @@
 
                 //Sino hay resultado
                 if (!$resultado) {
-                    respuesta(404, ['success' => false,'mensaje' => 'Paciente no encontrado']);
+                    respuesta(404, ['success' => false,'mensaje' => 'Usuario no encontrado o bloqueado']);
                 }
 
                 respuesta(200, [
                     'success' => true,
-                    'Hospital' => $resultado
+                    'Usuarios' => $resultado
                 ]);
             }
 
@@ -129,19 +131,22 @@
                     respuesta(400, ['success' => false, 'Mensaje' => 'Todos los campos son abligatorios']);
                 }
 
-                //si las contraseñas no coinciden
-                if($contrasena !== $contrasenaValidar){
-                    respuesta(400, ['success' => false, 'Mensaje' => 'Contraseñas no coinciden']);
-                }
-
                 //Si correo no tiene el formato correcto
                 if(!filter_var($correo, FILTER_VALIDATE_EMAIL)){
                     respuesta(400, ['success' => false, 'Mensaje' => 'Formato de correo incorrecto']);
                 }
 
+                //Si la contraseña tiene al menos 8 caracteres, un caracter especial, numero y mayuscula
+                validarContrasena($contrasena);
+
+                //si las contraseñas no coinciden
+                if($contrasena !== $contrasenaValidar){
+                    respuesta(400, ['success' => false, 'Mensaje' => 'Contraseñas no coinciden']);
+                }
+
                 //Valores por defecto
                 date_default_timezone_set('America/El_Salvador');
-                $fecha = date('d/m/Y H:i:s');
+                $fecha = date('Y-m-d H:i:s');
 
                 $resultado = $this->modelo->agregarUsuario(
                     $nombre,
@@ -154,7 +159,7 @@
 
                 //Respuesta obtenida
                 if($resultado === 1){
-                    respuesta(409, ['success' => false, 'Mensaje' => 'Correo ya en uso']);
+                    respuesta(409, ['success' => false, 'Mensaje' => 'El correo se encuentra en uso']);
                 }
                 else if($resultado === 2){
                     respuesta(400, ['success' => false, 'Mensaje' => 'Nivel de estudio inválido']);
@@ -166,6 +171,7 @@
 
             //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             //========== PUT ==========
+            //Agregar psoteriormente actualización por medio se session no por ID
             function actualizarusuario(int $id): void {
                 $datos = leerJson();
 
@@ -185,6 +191,8 @@
                 validarCamposVacios([$contrasenaNuevaValidar]);
                 validarCamposVacios([$foto]);
                 validarCampoEntero($nivel);
+
+                validarContrasena($contrasenaNueva);
 
                 //si las contraseñas no coinciden
                 if($contrasenaNueva !== $contrasenaNuevaValidar){
@@ -209,16 +217,65 @@
                 //Resultado recibido
                 switch($resultado){
                     case 1:
-                        respuesta(404, ['success' => false, 'Mensaje:' => 'ID ingresado es invalido']);
+                        respuesta(404, ['success' => false, 'Mensaje:' => 'Usuario no encontrado o bloqueado']);
                         break;
                     case 2:
                         respuesta(404, ['success' => false, 'Mensaje:' => 'Contraseña incorrecta']);
                         break;
                     case 3:
-                        respuesta(404, ['success' => false, 'Mensaje:' => 'Nivel de estudi inválido']);
+                        respuesta(404, ['success' => false, 'Mensaje:' => 'Correo ya registrado por otro usuario']);
+                        break;
+                    case 4:
+                        respuesta(404, ['success' => false, 'Mensaje:' => 'Nivel de estudio inválido']);
                         break;
                     default:
-                        respuesta(200, ['success' => true, 'Mensaje:' => 'Paciente actualizado correctamente']);
+                        respuesta(200, ['success' => true, 'Mensaje:' => 'Usuario actualizado correctamente']);
+                }
+            }
+
+            //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            //========== DELETE ==========
+            function eliminarUsuario(int $id): void {
+                $resultado = $this->modelo->eliminarUsuario(
+                    $id
+                );
+
+                //Resultado recibido
+                if($resultado === false){
+                    respuesta(404, ['success' => false,'Mensaje' => 'Usuario no encontrado o ya bloqueado'
+                    ]);
+                }
+                else{
+                    respuesta(200, ['success' => true, 'Mensaje:' => 'Usuario eliminado correctamente']);
+                }
+            }
+
+            //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            //========== PATCH ==========
+            function cambiarRolUsuario(int $id): void {
+                $datos = leerJson();
+
+                $rol = $datos['rol'] ?? '';
+
+                validarCamposVacios([$rol]);
+                validarCampoEntero($rol);
+
+                $resultado = $this->modelo->cambiarRolUsuario(
+                    $id,
+                    $rol
+                );
+
+                //Resultado recibido
+                if($resultado === 1){
+                    respuesta(404, ['success' => false,'Mensaje' => 'Usuario no encontrado o bloqueado'
+                    ]);
+                }
+                else if($resultado === 2){
+                    respuesta(400, ['success' => false,'Mensaje' => 'Rol inválido'
+                    ]);
+                }
+                else{
+                    respuesta(200, ['success' => true, 'Mensaje:' => 'Rol de usuario cambiado correctamente']);
                 }
             }
         }
