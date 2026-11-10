@@ -1,0 +1,146 @@
+:root {
+    /* Colores */
+    --color-background: #ffffff;
+    --color-bg-secondary: #f7f6f2;
+    --color-border: #e5e5e0;
+    --color-bg-links: #e9efea;
+    --color-title: #344940;
+    --color-text: #53645b;
+    --color-subtext: #859087;
+    --color-button: #245e49;
+    
+    /* Tipografía */
+    --font-family: Arial, sans-serif;
+
+    /* Tamaños de texto */
+    --font-size-title: 30px;
+    --font-size-body-title: 20px;
+    --font-size-nav: 16px;
+    --font-size-body: 14px;
+    --font-size-note: 12px;
+
+    /* Estilos tipográficos */
+    --font-weight-semibold: 600;
+    --font-weight-bold: 800;
+}
+
+body {
+    display: flex;
+    min-height: 100vh;
+    margin: 0;
+    font-family: var(--font-family);
+    color: var(--color-text);
+    background-color: var(--color-background);
+}
+
+h1, h2, h3 {
+    margin: 0;
+    line-height: 1.1; 
+}
+
+p {
+    margin: 0;
+}
+
+.main-content {
+    flex: 1;
+    min-width: 0;
+    padding: 24px;
+    background-color: var(--color-bg-secondary);
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    padding: 25px 18px;
+    border-right: 1px solid var(--color-border);
+}
+
+.app-name {
+    display: block;
+    text-decoration: none;
+    cursor: pointer;
+    font-size: var(--font-size-title);
+    color: var(--color-title);
+    font-weight: var(--font-weight-bold);
+    margin-bottom: 35px;
+}
+
+.menu {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.menu a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
+    border-radius: 9px;
+    text-decoration: none;
+    color: var(--color-text);
+}
+
+.menu a:hover,
+.menu a.active {
+    background-color: var(--color-bg-links);
+    color: var(--color-button);
+}
+
+.icono {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.sidebar-info {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 45px;
+    padding: 15px;
+    border-radius: 12px;
+    background-color: var(--color-bg-secondary);
+}
+
+/* SIDEBAR EN MOVIL (BOTTOM)*/
+@media (max-width: 768px) {
+    .sidebar {
+        background-color: var(--color-background);
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 100;
+        width: 100%;
+        padding: 0 0 env(safe-area-inset-bottom, 0px);
+        border-right: none;
+        border-top: 1px solid var(--color-border);
+    }
+
+    .app-name,
+    .sidebar-info,
+    .menu a span {
+        display: none;
+    }
+
+    .menu {
+        flex-direction: row;
+        justify-content: space-around;
+        gap: 0;
+    }
+
+    .menu a {
+        flex: 1;
+        justify-content: center;
+        height: 60px;
+        padding: 0;
+        border-radius: 0;
+    }
+
+    .main-content {
+        padding: 15px 15px calc(75px + env(safe-area-inset-bottom, 0px));
+    }
+}
