@@ -10,14 +10,14 @@
         //========== GET ==========
 
         public function listarUsuarios(){
-            $sql = "SELECT * FROM usuarios WHERE bloqueo_usuario = 0";
+            $sql = "SELECT nombre, correo, id_rol, fecha_registro, id_nivel, url_foto FROM usuarios WHERE bloqueo_usuario = 0";
             $pacientes = $this->conn->query($sql);
             return $pacientes->fetch_all(MYSQLI_ASSOC);
         }
 
         //---Busqueda por ID---
         public function buscarPorID($id){
-            $sql = ("SELECT * FROM usuarios WHERE id_usuario = ? AND bloqueo_usuario = 0");
+            $sql = ("SELECT nombre, correo, id_rol, fecha_registro, id_nivel, url_foto  FROM usuarios WHERE id_usuario = ? AND bloqueo_usuario = 0");
             $stmt = $this->conn->prepare($sql);
             $stmt->bind_param("i", $id); 
             
@@ -27,17 +27,22 @@
         }
 
         //---Busqueda mediante filtros---
-        public function buscarPorFiltros($busqueda, $correo, $nivel, $orden){
-            $sql = ("SELECT *  FROM usuarios WHERE bloqueo_usuario = 0 ");
+        public function buscarPorFiltros($busqueda, $correo, $nivel, $orden, $bloqueado){
+            $sql = ("SELECT nombre, correo, id_rol, fecha_registro, id_nivel, url_foto  FROM usuarios WHERE 1=1");
             $parametros = [];
             $tipoParametro = "";
+
+            //busqueda por estado de bloqueo
+            if ($bloqueado !== ''){
+                $sql .= " AND bloqueo_usuario = ?";
+                $parametros[] = $bloqueado;
+                $tipoParametro .= "i";
+            }
 
             //busqueda por nombre
             if ($busqueda !== ''){
                 $sql .= " AND nombre LIKE ? ";
                 $parametros[] = "%".$busqueda."%";
-                $parametros[] = "%".$busqueda."%";
-                $tipoParametro .= "s";
                 $tipoParametro .= "s";
             }
 
@@ -45,7 +50,7 @@
             if ($correo !== ''){
                 $sql .= " AND correo = ?";
                 $parametros[] = $correo;
-                $tipoParametro .= "i";
+                $tipoParametro .= "s";
             }
 
             //busqueda por nivel educativo
@@ -136,7 +141,7 @@
 
             $sql = "UPDATE usuarios SET nombre = ?, correo = ?, contrasena = ?, id_nivel = ?, url_foto = ? WHERE id_usuario = ?";
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("sssisi", $nombre, $correo, $contrasena, $nivel, $foto, $id); 
+            $stmt->bind_param("sssisi", $nombre, $correo, $hash, $nivel, $foto, $id); 
             $stmt->execute();
 
             return 0;
@@ -219,19 +224,13 @@
         //========== PATCH ==========
         public function cambiarRolUsuario($id, $rol){
             $validacion = $this->validarPATCH($id, $rol);
-
-            $set = "";
             
             //si pasa todas las validaciones
             if($validacion !== 0){
                 return $validacion;
             }
 
-            if($rol === '2'){
-                $set .= " es_profesor = 1,";
-            }
-
-            $sql = "UPDATE usuarios SET " . $set . " id_rol = ? WHERE id_usuario = ?";
+            $sql = "UPDATE usuarios SET id_rol = ? WHERE id_usuario = ?";
             $stmt = $this->conn->prepare($sql);
             $stmt->bind_param("ii", $rol, $id); 
             $stmt->execute();

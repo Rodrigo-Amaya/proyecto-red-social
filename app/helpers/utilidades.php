@@ -91,3 +91,9 @@ function validarContrasena(string $contrasena) {
         respuesta(400, ['success' => false, 'Mensaje:' => 'La contraseña debe tener al menos un numero']);
     }
 }
+
+function validarTrueOFalse(int $valor){
+    if($valor != true && $valor != false && $valor != 1 && $valor != 0){
+        respuesta(400, ['success' => false, 'Mensaje:' => 'Valor invalido de campo de verdadero o falso']);
+    }
+}
