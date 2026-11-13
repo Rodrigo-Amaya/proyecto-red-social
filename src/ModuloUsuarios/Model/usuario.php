@@ -11,8 +11,8 @@
 
         public function listarUsuarios(){
             $sql = "SELECT nombre, correo, id_rol, fecha_registro, id_nivel, url_foto FROM usuarios WHERE bloqueo_usuario = 0";
-            $pacientes = $this->conn->query($sql);
-            return $pacientes->fetch_all(MYSQLI_ASSOC);
+            $usuarios = $this->conn->query($sql);
+            return $usuarios->fetch_all(MYSQLI_ASSOC);
         }
 
         //---Busqueda por ID---
