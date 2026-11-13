@@ -62,15 +62,17 @@
                 if(isset($_GET["busqueda"])||
                 isset($_GET["correo"])||
                 isset($_GET["nivelEstudio"])||
-                isset($_GET["orden"])){
-                    $busqueda = trim($_GET["busquedaPaciente"] ?? '');
+                isset($_GET["orden"]) ||
+                isset($_GET["bloqueado"])){
+                    $busqueda = trim($_GET["busqueda"] ?? '');
                     $correo = trim($_GET["correo"] ?? '');
                     $nivel = trim($_GET["nivelEstudio"] ?? '');
                     $orden = trim($_GET["orden"] ?? '');
                     $orden = strtoupper($orden);
+                    $bloqueado = trim($_GET["bloqueado"] ?? '');
 
                     //Validamos si algun campo se ingresado esta vacio
-                    validarCamposVacios([$busqueda, $correo, $nivel, $orden]);
+                    validarCamposVacios([$busqueda, $correo, $nivel, $orden, $bloqueado]);
 
                     //Validamos si en nivel de estudio se ingreso un numero entero
                     if($nivel){
@@ -92,11 +94,18 @@
                         }
                     }
 
+                    //Validamos si se pide un valor correcto para bloqueado
+                    if($bloqueado){
+                        validarCampoEntero($bloqueado);
+                        validarTrueOFalse($bloqueado);
+                    }
+
                     $resultado = $this->modelo->buscarPorFiltros(
                         $busqueda,
                         $correo,
                         $nivel,
-                        $orden
+                        $orden,
+                        $bloqueado
                     );
                 }
 

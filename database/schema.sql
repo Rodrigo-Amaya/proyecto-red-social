@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 03-11-2026 a las 22:35:14
+-- Tiempo de generación: 13-11-2026 a las 15:41:43
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -224,8 +224,7 @@ CREATE TABLE `usuarios` (
   `puntos` int(11) NOT NULL DEFAULT 0,
   `id_nivel` int(11) NOT NULL,
   `url_foto` varchar(500) NOT NULL,
-  `bloqueo_usuario` tinyint(1) NOT NULL DEFAULT 0,
-  `es_profesor` tinyint(1) NOT NULL DEFAULT 0
+  `bloqueo_usuario` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
