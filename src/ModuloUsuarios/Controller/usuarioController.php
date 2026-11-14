@@ -116,7 +116,7 @@
                 
                 //Mensaje recibido
                 if($resultado){
-                    respuesta(200, ['success' => true, 'Pacientes' => $resultado]);
+                    respuesta(200, ['success' => true, 'Usuarios' => $resultado]);
                 }
                 else{
                     respuesta(200, ['success' => true, 'Usuarios' => '']);
