@@ -136,12 +136,15 @@
             //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             //========== POST ==========
             function ingresarNuevaPublicacion(): void {
-                $datos = leerJson();
 
-                $titulo = $datos["titulo"] ?? '';
-                $mensaje = $datos["mensaje"] ?? '';
-                $usuario = $datos["usuario"] ?? '';
-                $materia = $datos["materia"] ?? '';
+                $titulo = $_POST["titulo"] ?? '';
+                $mensaje = $_POST["mensaje"] ?? '';
+                $usuario = $_POST["id_usuario"] ?? '';
+                $materia = $_POST["id_materia"] ?? '';
+                $archivo1 = $_FILES["archivo_1"] ?? NULL;
+                $archivo2 = $_FILES["archivo_2"] ?? NULL;
+                $archivo3 = $_FILES["archivo_3"] ?? NULL;
+                $archivos = [$archivo1, $archivo2, $archivo3];
 
                 //Si alguno de los campos ingresados esta vacio
                 if ( $titulo === '' || $mensaje === '' || $usuario === '' || $materia === '') {
@@ -164,11 +167,32 @@
                 //Que la materia no sea texto
                 validarCampoEntero($materia);
 
+                $extensiones = [];
+
+                //Para los archivos
+                foreach($archivos as $archivo){
+                    if($archivo === NULL){
+                        $extensiones[] = null;
+                        continue;
+                    }
+                    $extension = validarDocumento($archivo);
+
+                    if($extension === false){
+                        respuesta(400, ['success' => false, 'Mensaje' => 'Tipo de archivo no es valido o esta corrupto']);
+                    }
+
+                    $extensiones[] = $extension;
+                }
+
                 $resultado = $this->modelo->hacerPublicacion(
                     $titulo,
                     $mensaje,
                     $usuario,
-                    $materia
+                    $materia,
+                    $archivo1,
+                    $archivo2,
+                    $archivo3,
+                    $extensiones
                 );
 
                 //Respuesta obtenida
@@ -177,6 +201,9 @@
                 }
                 else if($resultado === 2){
                     respuesta(400, ['success' => false, 'Mensaje' => 'Materia no encontrada']);
+                }
+                else if ($resultado === 3) {
+                    respuesta(500, ['success' => false, 'Mensaje' => 'Error al guardar los documentos']);
                 }
                 else{
                     respuesta(201, ['success' => true, 'Mensaje' => 'Se realizo la publicacion con exito']);

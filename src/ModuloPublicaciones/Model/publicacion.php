@@ -10,14 +10,32 @@
         //========== GET ==========
 
         public function todasPublicaciones(){
-            $sql = "SELECT titulo, fecha, mensaje, puntos, id_usuario, id_materia, estado FROM publicaciones WHERE bloquear = 0";
+            $sql = "SELECT p.id_publicacion, p.titulo, p.fecha, p.mensaje, p.puntos, p.id_usuario, p.id_materia, p.estado,
+
+            (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1) AS archivo_1,
+
+            (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 1) AS archivo_2,
+
+            (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 2) AS archivo_3
+
+            FROM publicaciones p
+            WHERE p.bloquear = 0;";
             $publicaciones = $this->conn->query($sql);
             return $publicaciones->fetch_all(MYSQLI_ASSOC);
         }
 
         //---Busqueda por ID---
         public function buscarPorID($id){
-            $sql = ("SELECT titulo, fecha, mensaje, puntos, id_usuario, id_materia, estado FROM publicaciones WHERE id_publicacion = ? AND bloquear = 0");
+            $sql = ("SELECT p.id_publicacion, p.titulo, p.fecha, p.mensaje, p.puntos, p.id_usuario, p.id_materia, p.estado,
+
+            (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1) AS archivo_1,
+
+            (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 1) AS archivo_2,
+
+            (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 2) AS archivo_3
+
+            FROM publicaciones p
+            WHERE id_publicacion = ? AND p.bloquear = 0;");
             $stmt = $this->conn->prepare($sql);
             $stmt->bind_param("i", $id); 
             
@@ -28,51 +46,61 @@
 
         //---Busqueda mediante filtros---
         public function buscarPorFiltros($busqueda, $usuario, $materia, $estado, $orden, $bloqueado){
-            $sql = ("SELECT titulo, fecha, mensaje, puntos, id_usuario, id_materia, estado FROM publicaciones WHERE 1=1");
+            $sql = ("SELECT p.id_publicacion, p.titulo, p.fecha, p.mensaje, p.puntos, p.id_usuario, p.id_materia, p.estado,
+
+            (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1) AS archivo_1,
+
+            (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 1) AS archivo_2,
+
+            (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 2) AS archivo_3
+
+            FROM publicaciones p
+
+            WHERE 1=1");
             $parametros = [];
             $tipoParametro = "";
 
             //busqueda por estado de bloqueo
             if ($bloqueado !== ''){
-                $sql .= " AND bloquear = ?";
+                $sql .= " AND p.bloquear = ?";
                 $parametros[] = $bloqueado;
                 $tipoParametro .= "i";
             }
 
             //busqueda por titulo
             if ($busqueda !== ''){
-                $sql .= " AND titulo LIKE ? ";
+                $sql .= " AND p.titulo LIKE ? ";
                 $parametros[] = "%".$busqueda."%";
                 $tipoParametro .= "s";
             }
 
             //busqueda por usaurio
             if ($usuario !== ''){
-                $sql .= " AND id_usuario = ?";
+                $sql .= " AND p.id_usuario = ?";
                 $parametros[] = $usuario;
                 $tipoParametro .= "i";
             }
 
             //busqueda por materia
             if ($materia !== ''){
-                $sql .= " AND id_materia = ?";
+                $sql .= " AND p.id_materia = ?";
                 $parametros[] = $materia;
                 $tipoParametro .= "i";
             }
 
             //busqueda por estado
             if ($estado !== ''){
-                $sql .= " AND estado = ?";
+                $sql .= " AND p.estado = ?";
                 $parametros[] = $estado;
                 $tipoParametro .= "s";
             }
 
             //ordenar de forma
             if ($orden === 'ASC'){
-                $sql .= " ORDER BY nombre ASC";
+                $sql .= " ORDER BY p.nombre ASC";
             }
             if($orden === 'DESC'){
-                $sql .= " ORDER BY nombre DESC";
+                $sql .= " ORDER BY p.nombre DESC";
             }
 
             //ejecutamos el script SQL
@@ -87,7 +115,7 @@
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== POST ==========
-        public function hacerPublicacion($titulo, $mensaje, $usuario, $materia){
+        public function hacerPublicacion($titulo, $mensaje, $usuario, $materia, $archivo1, $archivo2, $archivo3, $extenciones){
             $validacion = $this->validarPOST($usuario, $materia);
 
             //Si pasa todas las validaciones
@@ -108,6 +136,37 @@
             $stmt = $this->conn->prepare($sql);
             $stmt->bind_param("sssiiis", $titulo, $fecha, $mensaje, $puntos, $usuario, $materia, $estado);
             $stmt->execute();
+            $idPublicacion = $this->conn->insert_id;
+
+            $archivos = [$archivo1, $archivo2, $archivo3];
+
+            //Para cada archivo se guarda
+            foreach ($archivos as $indice => $archivo) {
+                //Si no se envió un archivo
+                if ($archivo === null || $archivo['error'] === UPLOAD_ERR_NO_FILE) {
+                    continue;
+                }
+                $ruta = $this->guardarDocumento($archivo, $idPublicacion, $indice + 1);
+
+                if ($ruta === false) {
+                    return 3;
+                }
+
+                $tipoArchivo = $extenciones[$indice];
+                $nombre = basename($ruta);
+
+                $sql = "INSERT INTO archivos_publicaciones 
+                (id_publicacion, url_archivo, nombre_archivo, tipo_archivo, fecha_subida) 
+                VALUES (?,?,?,?,?)";
+
+                $stmt = $this->conn->prepare($sql);
+                $stmt->bind_param("issss", $idPublicacion, $ruta, $nombre, $tipoArchivo, $fecha);
+
+                if (!$stmt->execute()) {
+                    return 3;
+                }
+            }
+
             return 0;
         }
 
@@ -134,6 +193,49 @@
 
             //Si es valido
             return 0;
+        }
+
+        //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        //========== DOCUMENTOS ==========
+
+        //Guardamos el documento en la carpeta correspondiente
+        private function guardarDocumento($archivo, $idPublicacion, $numero): string|false{
+            //Obtenemos la extencion del archivo
+            $extension = validarDocumento($archivo);
+
+            //Si no regreso una extencion
+            if ($extension === false) {
+                return false;
+            }
+
+            $directorio = __DIR__ . '/../../../documentos/publicaciones/';
+            $subdirectorio = '';
+
+            if ($extension === "pdf") {
+                $subdirectorio = 'pdf/';
+            }
+            else if (in_array($extension, ["jpg", "png", "webp"])) {
+                $subdirectorio = 'imagenes/';
+            }
+            else {
+                $subdirectorio = 'office/';
+            }
+
+            $directorio = __DIR__ . '/../../../documentos/publicaciones/' . $subdirectorio;
+
+            // Crear directorio si no existe...
+
+            $nombre = "documento_{$idPublicacion}_{$numero}.{$extension}";
+
+            $rutaFisica = $directorio . $nombre;
+
+            if (!move_uploaded_file($archivo['tmp_name'], $rutaFisica)) {
+                return false;
+            }
+
+            $this->agregarPuntos($idPublicacion);
+
+            return "documentos/publicaciones/" . $subdirectorio . $nombre;
         }
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -267,6 +369,23 @@
             else{
                 return $puntos;
             }
+        }
+
+        public function agregarPuntos($idPublicacion){
+            $sql = "SELECT puntos FROM publicaciones WHERE id_publicacion = ?";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("i", $idPublicacion); 
+            $stmt->execute();
+            $resultado = $stmt->get_result();
+            $fila = $resultado->fetch_assoc();
+            $puntos = $fila['puntos'];
+
+            $puntos = $puntos + 10;
+
+            $sql = "UPDATE publicaciones SET puntos = ? WHERE id_publicacion = ?";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("ii", $puntos, $idPublicacion); 
+            $stmt->execute();
         }
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
