@@ -199,7 +199,7 @@
         //========== DOCUMENTOS ==========
 
         //Guardamos el documento en la carpeta correspondiente
-        private function guardarDocumento($archivo, $idPublicacion, $numero): string|false{
+        private function guardarDocumento($archivo, $idPublicacion, $numero, bool $sumarPuntos = true): string|false{
             //Obtenemos la extencion del archivo
             $extension = validarDocumento($archivo);
 
@@ -225,7 +225,7 @@
 
             // Crear directorio si no existe...
 
-            $nombre = "documento_{$idPublicacion}_{$numero}.{$extension}";
+            $nombre = "documento_{$idPublicacion}_{$numero}_" . uniqid() . ".{$extension}";
 
             $rutaFisica = $directorio . $nombre;
 
@@ -233,9 +233,34 @@
                 return false;
             }
 
-            $this->agregarPuntos($idPublicacion);
+            if ($sumarPuntos) {
+                $this->agregarPuntos($idPublicacion);
+            }
 
             return "documentos/publicaciones/" . $subdirectorio . $nombre;
+        }
+
+        private function archivosPorPosicion($id): array {
+            $stmt = $this->conn->prepare("SELECT id_archivo, url_archivo FROM archivos_publicaciones WHERE id_publicacion = ? ORDER BY id_archivo ASC");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $resultado = $stmt->get_result();
+
+            $archivos = [];
+            $posicion = 1;
+            while($fila = $resultado->fetch_assoc()){
+                $archivos[$posicion++] = $fila;
+            }
+            return $archivos;
+        }
+
+        private function borrarArchivosFisicos(array $rutas): void {
+            foreach($rutas as $ruta){
+                $rutaFisica = __DIR__ . '/../../../' . $ruta;
+                if(is_file($rutaFisica)){
+                    unlink($rutaFisica);
+                }
+            }
         }
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -390,82 +415,132 @@
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== PUT ==========
-        public function actualizarPublicacion($id, $titulo, $mensaje, $usuario, $materia){
-            $validacion = $this->validarPUT($id, $usuario, $materia);
-            
-            //si pasa todas las validaciones
+        public function actualizarPublicacion($id, $titulo, $mensaje, $materia, $archivosNuevos, $posicionesEliminar){
+            $validacion = $this->validarPUT($id, $materia);
+
             if($validacion !== 0){
                 return $validacion;
             }
 
-            //asignamos nuevos puntos
-            $puntos = $this->puntosPublicacion($titulo, $mensaje, $usuario, $materia);
-
-            $sql = "UPDATE publicaciones SET titulo = ?, mensaje = ?, puntos = ?, id_materia = ? WHERE id_publicacion = ?";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("ssiii", $titulo, $mensaje, $puntos, $materia, $id); 
+            // Ya no llega el usuario: se obtiene de la publicación (se necesita para calcular puntos)
+            $stmt = $this->conn->prepare("SELECT id_usuario FROM publicaciones WHERE id_publicacion = ?");
+            $stmt->bind_param("i", $id);
             $stmt->execute();
+            $usuario = (int) $stmt->get_result()->fetch_assoc()['id_usuario'];
+
+            // Archivos que tiene ahora, por posición (1, 2, 3), en el mismo orden que el GET
+            $archivosActuales = $this->archivosPorPosicion($id);
+
+            //----- PASO 1: guardar los archivos nuevos en disco -----
+            // Se hace primero: si algo falla, todavía no se ha borrado nada de lo anterior
+            $rutasNuevas = [];
+            foreach($archivosNuevos as $posicion => $archivo){
+                $ruta = $this->guardarDocumento($archivo, $id, $posicion, false);
+
+                if($ruta === false){
+                    $this->borrarArchivosFisicos($rutasNuevas); // limpiamos los que ya se habian guardado
+                    return 4;
+                }
+                $rutasNuevas[$posicion] = $ruta;
+            }
+
+            //----- PASO 2: base de datos (todo o nada) -----
+            $rutasViejas = []; // archivos que se borraran del disco cuando todo salga bien
+            $fecha = date('Y-m-d H:i:s');
+
+            $this->conn->begin_transaction();
+            try {
+                // Datos de la publicación
+                $stmt = $this->conn->prepare("UPDATE publicaciones SET titulo = ?, mensaje = ?, id_materia = ? WHERE id_publicacion = ?");
+                $stmt->bind_param("ssii", $titulo, $mensaje, $materia, $id);
+                if(!$stmt->execute()) throw new Exception('Error al actualizar datos');
+
+                // Eliminar archivos pedidos (si esa posición no tiene archivo, se ignora)
+                foreach($posicionesEliminar as $posicion){
+                    if(!isset($archivosActuales[$posicion])) continue;
+
+                    $stmt = $this->conn->prepare("DELETE FROM archivos_publicaciones WHERE id_archivo = ?");
+                    $stmt->bind_param("i", $archivosActuales[$posicion]['id_archivo']);
+                    if(!$stmt->execute()) throw new Exception('Error al eliminar archivo');
+
+                    $rutasViejas[] = $archivosActuales[$posicion]['url_archivo'];
+                }
+
+                // Archivos nuevos: reemplazan si la posición está ocupada, se agregan si está libre
+                foreach($rutasNuevas as $posicion => $ruta){
+                    $nombre = basename($ruta);
+                    $tipo = pathinfo($ruta, PATHINFO_EXTENSION);
+
+                    if(isset($archivosActuales[$posicion])){
+                        // Reemplazo: UPDATE sobre la misma fila para que conserve su posición
+                        $stmt = $this->conn->prepare("UPDATE archivos_publicaciones SET url_archivo = ?, nombre_archivo = ?, tipo_archivo = ?, fecha_subida = ? WHERE id_archivo = ?");
+                        $stmt->bind_param("ssssi", $ruta, $nombre, $tipo, $fecha, $archivosActuales[$posicion]['id_archivo']);
+                        $rutasViejas[] = $archivosActuales[$posicion]['url_archivo'];
+                    }
+                    else{
+                        // Posición libre: archivo nuevo
+                        $stmt = $this->conn->prepare("INSERT INTO archivos_publicaciones (id_publicacion, url_archivo, nombre_archivo, tipo_archivo, fecha_subida) VALUES (?,?,?,?,?)");
+                        $stmt->bind_param("issss", $id, $ruta, $nombre, $tipo, $fecha);
+                    }
+                    if(!$stmt->execute()) throw new Exception('Error al guardar archivo');
+                }
+
+                // Recalcular puntos: base por contenido + 10 por cada archivo que quedó (máximo 100)
+                $stmt = $this->conn->prepare("SELECT COUNT(*) FROM archivos_publicaciones WHERE id_publicacion = ?");
+                $stmt->bind_param("i", $id);
+                $stmt->execute();
+                $totalArchivos = (int) $stmt->get_result()->fetch_row()[0];
+
+                $puntos = $this->puntosPublicacion($titulo, $mensaje, $usuario, $materia) + ($totalArchivos * 10);
+                $puntos = min($puntos, 100);
+
+                $stmt = $this->conn->prepare("UPDATE publicaciones SET puntos = ? WHERE id_publicacion = ?");
+                $stmt->bind_param("ii", $puntos, $id);
+                if(!$stmt->execute()) throw new Exception('Error al actualizar puntos');
+
+                $this->conn->commit();
+            }
+            catch(Exception $e){
+                // Algo falló: se deshace la BD y se borran los archivos nuevos que se habian guardado
+                $this->conn->rollback();
+                $this->borrarArchivosFisicos($rutasNuevas);
+                return 4;
+            }
+
+            //----- PASO 3: ya todo salió bien, ahora sí se borran los archivos viejos del disco -----
+            $this->borrarArchivosFisicos($rutasViejas);
 
             return 0;
         }
 
         //validaciones para PUT
-        public function validarPUT($id, $usuario, $materia){
+        public function validarPUT($id, $materia){
             //validar si la id existe en la base de datos la ID
-            $sql = "SELECT id_publicacion FROM publicaciones WHERE id_publicacion = ? AND bloquear = 0";
+           // La publicación debe existir y no estar bloqueada (y de paso traemos su fecha)
+            $sql = "SELECT fecha FROM publicaciones WHERE id_publicacion = ? AND bloquear = 0";
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("i", $id); 
+            $stmt->bind_param("i", $id);
             $stmt->execute();
-            if ($stmt->get_result()->num_rows == 0) {
+            $fila = $stmt->get_result()->fetch_assoc();
+            if (!$fila) {
                 return 1;
             }
 
-            //validar si el usaurio existe y no este bloqueado
-            $sql = "SELECT id_usuario FROM usuarios WHERE id_usuario = ? AND bloqueo_usuario = 0";
+            // La materia debe existir
+            $sql = "SELECT id_materia FROM materias WHERE id_materia = ?";
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("i", $usuario); 
+            $stmt->bind_param("i", $materia);
             $stmt->execute();
-            if ($stmt->get_result()->num_rows == 0) {
+            if ($stmt->get_result()->num_rows === 0) {
                 return 2;
             }
 
-            //validar que el usaurio sea el mismo
-            $sql = "SELECT id_usuario FROM publicaciones WHERE id_publicacion = ? AND bloquear = 0";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("i", $id); 
-            $stmt->execute();
-            $resultadoUsuario = $stmt->get_result();
-            $filaUsuario = $resultadoUsuario->fetch_assoc();
-            $id_usuario = $filaUsuario['id_usuario'];
-            if ($usuario !== $id_usuario) {
-                return 3;
-            }
-
-            //validar si la materia existe
-            $sql = "SELECT id_materia FROM materias WHERE id_materia = ?";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("i", $materia); 
-            $stmt->execute();
-            if ($stmt->get_result()->num_rows === 0) {
-                return 4;
-            }
-            
-            //validar si la fecha no pasa de 1 hora despues de su publicacion
-            $sql = "SELECT fecha FROM publicaciones WHERE id_publicacion = ?";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("i", $id); 
-            $stmt->execute();
-            $resultadoFecha = $stmt->get_result();
-            $fila = $resultadoFecha->fetch_assoc();
-
+            // Solo se puede editar durante 1 hora después de publicar
             date_default_timezone_set('America/El_Salvador');
-            $fechaActual = new DateTime();
-            $fechaPublicacion = new DateTime($fila['fecha']);
-            
-            $limite = clone $fechaPublicacion;
+            $limite = new DateTime($fila['fecha']);
             $limite->modify('+1 hour');
-            if ($fechaActual >= $limite) {
-                return 5;
+            if (new DateTime() >= $limite) {
+                return 3;
             }
 
             return 0;
