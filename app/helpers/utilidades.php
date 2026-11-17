@@ -97,3 +97,45 @@ function validarTrueOFalse(int $valor){
         respuesta(400, ['success' => false, 'Mensaje:' => 'Valor invalido de campo de verdadero o falso']);
     }
 }
+
+function validarDocumento($archivo) {
+    //Si hubo algun error a la hora de subir el archivo
+    if ($archivo['error'] !== UPLOAD_ERR_OK) {
+        return false;
+    }
+
+    if (!is_array($archivo)) {
+        return false;
+    }
+
+    //Si el archivo es muy grande
+    if ($archivo['size'] > 10 * 1024 * 1024) {
+        return false;
+    }
+
+    //Tipos de archivos permitidos por el sistema
+    $tiposPermitidos = [
+        // Documentos
+        'application/pdf' => 'pdf',
+        'application/msword' => 'doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+        'application/vnd.ms-excel' => 'xls',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+
+        // Imágenes
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp'
+    ];
+
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    if ($finfo === false) {
+        return false;
+    }
+    if (!is_file($archivo['tmp_name'])) {
+        return false;
+    }
+    $tipo = finfo_file($finfo, $archivo['tmp_name']);
+
+    return $tiposPermitidos[$tipo] ?? false;
+}

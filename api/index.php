@@ -27,6 +27,7 @@ try {
     // Una línea por recurso; el controlador se crea solo si se pide
     $rutas = [
         'usuarios'  => fn() => new usuarioController(new usuario($conn)),
+        'publicaciones'  => fn() => new PublicacionController(new Publicacion($conn)),
     ];
 
     $recurso = $partes[0] ?? '';
