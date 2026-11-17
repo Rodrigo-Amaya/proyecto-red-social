@@ -1,0 +1,24 @@
+[
+    {
+        "id_publicacion": 1,
+        "titulo": "Ayuda con ecuaciones cuadráticas",
+        "fecha": "2026-11-04 15:30:00",
+        "mensaje": "¿Alguien puede explicarme cómo resolver ecuaciones cuadráticas por factorización? Estoy estudiando para un examen.",
+        "puntos": 10,
+        "id_usuario": 1,
+        "id_materia": 1,
+        "estado": "SINRESOLVER",
+        "bloquear": 0
+    },
+    {
+        "id_publicacion": 2,
+        "titulo": "Dudas sobre fotosíntesis",
+        "fecha": "2026-11-04 14:45:00",
+        "mensaje": "¿Podrían explicarme cómo las plantas utilizan la luz solar para producir su alimento?",
+        "puntos": 5,
+        "id_usuario": 2,
+        "id_materia": 2,
+        "estado": "SINRESOLVER",
+        "bloquear": 0
+    }
+]

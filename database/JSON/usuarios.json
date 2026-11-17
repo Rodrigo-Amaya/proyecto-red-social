@@ -1,0 +1,18 @@
+[
+    {
+        "id_usuario": 1,
+        "nombre": "Clara Rodríguez",
+        "url_foto": "https://i.pravatar.cc/150?img=47",
+        "id_nivel": 2,
+        "puntos": 120,
+        "es_profesor": 0
+    },
+    {
+        "id_usuario": 2,
+        "nombre": "Diego Fernández",
+        "url_foto": "https://i.pravatar.cc/150?img=12",
+        "id_nivel": 1,
+        "puntos": 80,
+        "es_profesor": 0
+    }
+]

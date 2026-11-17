@@ -1,0 +1,22 @@
+[
+    {
+        "id_materia": 1,
+        "nombre": "Matemáticas",
+        "descripcion": "Matemáticas y resolución de problemas"
+    },
+    {
+        "id_materia": 2,
+        "nombre": "Ciencias",
+        "descripcion": "Ciencias naturales"
+    },
+    {
+        "id_materia": 3,
+        "nombre": "Computación",
+        "descripcion": "Programación e informática"
+    },
+    {
+        "id_materia": 4,
+        "nombre": "Lenguaje",
+        "descripcion": "Lenguaje y literatura"
+    }
+]
