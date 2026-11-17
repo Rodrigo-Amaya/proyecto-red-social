@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 14-11-2026 a las 23:03:49
+-- Tiempo de generación: 03-11-2026 a las 22:35:14
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -140,18 +140,6 @@ CREATE TABLE `nivel_estudio` (
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `palabras_clave`
---
-
-CREATE TABLE `palabras_clave` (
-  `id_palabra` int(11) NOT NULL,
-  `id_materia` int(11) NOT NULL,
-  `palabra` varchar(100) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
 -- Estructura de tabla para la tabla `publicaciones`
 --
 
@@ -236,7 +224,8 @@ CREATE TABLE `usuarios` (
   `puntos` int(11) NOT NULL DEFAULT 0,
   `id_nivel` int(11) NOT NULL,
   `url_foto` varchar(500) NOT NULL,
-  `bloqueo_usuario` tinyint(1) NOT NULL DEFAULT 0
+  `bloqueo_usuario` tinyint(1) NOT NULL DEFAULT 0,
+  `es_profesor` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -300,13 +289,6 @@ ALTER TABLE `materias`
 ALTER TABLE `nivel_estudio`
   ADD PRIMARY KEY (`id_nivel`),
   ADD UNIQUE KEY `nombre_nivel_unico` (`nombre`);
-
---
--- Indices de la tabla `palabras_clave`
---
-ALTER TABLE `palabras_clave`
-  ADD PRIMARY KEY (`id_palabra`),
-  ADD UNIQUE KEY `id_materia` (`id_materia`,`palabra`);
 
 --
 -- Indices de la tabla `publicaciones`
@@ -396,12 +378,6 @@ ALTER TABLE `nivel_estudio`
   MODIFY `id_nivel` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT de la tabla `palabras_clave`
---
-ALTER TABLE `palabras_clave`
-  MODIFY `id_palabra` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT de la tabla `publicaciones`
 --
 ALTER TABLE `publicaciones`
@@ -480,12 +456,6 @@ ALTER TABLE `likes_comentario`
 ALTER TABLE `likes_publicacion`
   ADD CONSTRAINT `likes_publicacion_fk` FOREIGN KEY (`id_publicacion`) REFERENCES `publicaciones` (`id_publicacion`),
   ADD CONSTRAINT `likes_publicacion_usuario_fk` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id_usuario`);
-
---
--- Filtros para la tabla `palabras_clave`
---
-ALTER TABLE `palabras_clave`
-  ADD CONSTRAINT `palabras_clave_ibfk_1` FOREIGN KEY (`id_materia`) REFERENCES `materias` (`id_materia`);
 
 --
 -- Filtros para la tabla `publicaciones`
