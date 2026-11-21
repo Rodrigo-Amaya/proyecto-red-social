@@ -110,8 +110,8 @@
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== POST ==========
-        public function agregarUsuario($nombre, $correo, $contrasena, $fecha, $nivel, $foto){
-            $validacion = $this->validarPOST($nombre, $correo, $nivel);
+        public function agregarUsuario($nombre, $correo, $contrasena, $fecha, $nivel){
+            $validacion = $this->validarPOST($correo, $nivel);
 
             //Si pasa todas las validaciones
             if($validacion !== 0){
@@ -123,16 +123,16 @@
             $hash = password_hash($contrasena, PASSWORD_DEFAULT);
             
             $sql = "INSERT INTO usuarios 
-            (nombre, correo, contrasena, id_rol, fecha_registro, id_nivel, url_foto) VALUES (?,?,?,?,?,?,?)";
+            (nombre, correo, contrasena, id_rol, fecha_registro, id_nivel) VALUES (?,?,?,?,?,?,?)";
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("sssisis", $nombre, $correo, $hash, $rol, $fecha, $nivel, $foto);
+            $stmt->bind_param("sssisis", $nombre, $correo, $hash, $rol, $fecha, $nivel);
             $stmt->execute();
             return 0;
             
         }
 
         //Validaciones para POST
-        public function validarPOST($nombre, $correo, $nivel){
+        public function validarPOST($correo, $nivel){
 
             //validar si el correo ya esta en uso
             $sql = "SELECT id_usuario FROM usuarios WHERE correo = ?";
@@ -154,6 +154,70 @@
 
             //Si es valido
             return 0;
+        }
+
+        //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        //========== IMAGEN DE PERFIL ==========
+        public function guardarImagenPerfil($imagen, $idUsuario){
+            $extension = validarDocumento($imagen);
+            //Si no regreso una extencion
+            if ($extension === false) {
+                return false;
+            }
+
+            $subdirectorio = 'imagenes/';
+
+            //Si no es una imagen
+            if (!in_array($extension, ["jpg", "png", "webp"])) {
+                return false;
+            }
+
+            $directorio = __DIR__ . '/../../../documentos/usuarios/' . $subdirectorio;
+
+            // Crear directorio si no existe...
+
+            $nombre = "imagen_perfil_usuario_{$idUsuario}" . uniqid() . ".{$extension}";
+
+            $rutaFisica = $directorio . $nombre;
+
+            if (!move_uploaded_file($imagen['tmp_name'], $rutaFisica)) {
+                return false;
+            }
+
+            return "documentos/usuarios/" . $subdirectorio . $nombre;
+        }
+
+        public function cambiarImagenPerfil($idUsuario, $imagen){
+            $validacion = $this->validarCambioImagen($idUsuario);
+
+            if(!$validacion){
+                return 1;
+            }
+
+            $ruta = $this->guardarImagenPerfil($imagen, $idUsuario);
+
+            if($ruta === false) {
+                return 2;
+            }
+
+            $sql = "UPDATE usuarios SET url_foto = ? WHERE id_usuario = ?";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("si", $ruta, $idUsuario); 
+            $stmt->execute();
+
+            return 0;
+        }
+
+        public function validarCambioImagen($usuario){
+            //validar si el usaurio existe y no este bloqueado
+            $sql = "SELECT id_usuario FROM usuarios WHERE id_usuario = ? AND bloqueo_usuario = 0";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("i", $usuario); 
+            $stmt->execute();
+            if ($stmt->get_result()->num_rows == 0) {
+                return false;
+            }
+            return true;
         }
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------

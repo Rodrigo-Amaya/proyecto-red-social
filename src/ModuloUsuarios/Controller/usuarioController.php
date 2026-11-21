@@ -29,6 +29,14 @@
                     return;
                 }
 
+                if($parte === "cambiarFoto"){
+                    match ($metodo){
+                        'POST'    => $this->cambiarFotoPerfil(),
+                        default  => noPermitido(),
+                    };
+                    return;
+                }
+
                 // url: usuarios/{id}
                 $idUsuario = validarId($parte, 'ID inválido');
 
@@ -176,7 +184,6 @@
                 $contrasena = $_POST["contrasena"] ?? '';
                 $contrasenaValidar = $_POST["contrasenaValidar"] ?? '';
                 $nivel = $_POST["nivelEstudio"] ?? '';
-                $foto = '/imagenes';
 
                 //Si alguno de los campos ingresados esta vacio
                 if ( $nombre === '' || $correo === '' || $contrasena === '' || $contrasenaValidar === ''|| $nivel === '') {
@@ -205,8 +212,7 @@
                     $correo,
                     $contrasena,
                     $fecha,
-                    $nivel, 
-                    $foto
+                    $nivel
                 );
 
                 //Respuesta obtenida
@@ -218,6 +224,38 @@
                 }
                 else{
                     respuesta(201, ['success' => true, 'Mensaje' => 'Usuario ingresado correctamente']);
+                }
+            }
+
+            function cambiarFotoPerfil(): void{
+                $usuario = $_POST["idUsuario"] ?? NULL;
+                $imagen = $_FILES["imagen"] ?? NULL;
+
+                //Si alguno de los campos ingresados esta vacio
+                if ( $usuario === '' || $imagen === NULL ) {
+                    respuesta(400, ['success' => false, 'Mensaje' => 'Todos los campos son abligatorios']);
+                }
+
+                //Que el usuario no sea texto
+                validarCampoEntero($usuario);
+                $extension = strtolower(validarDocumento($imagen));
+                if (!in_array($extension, ["jpg", "jpeg", "png", "webp"], true)) {
+                    respuesta(400, ['success' => false, 'Mensaje' => 'Tipo de archivo invalido']);
+                }
+
+                $resultado = $this->modelo->cambiarImagenPerfil(
+                    $usuario,
+                    $imagen
+                );
+                
+                if($resultado === 0){
+                    respuesta(201, ['success' => true, 'Mensaje' => 'Se Cambio la foto de perfil con exito']);
+                }
+                else if($resultado === 1){
+                    respuesta(400, ['success' => false, 'Mensaje' => 'Usuario no encontrado o bloqueado']);
+                }
+                else {
+                    respuesta(500, ['success' => false, 'Mensaje' => 'Error al guardar la imagen']);
                 }
             }
 
