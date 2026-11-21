@@ -13,7 +13,7 @@ $publicaciones = $publicaciones ?? [];
 
     <title>Inicio | Red Social Educativa</title>
 
-    <link rel="stylesheet" href="public/css/inicio.css">
+    <link rel="stylesheet" href="../../css/inicio.css">
 </head>
 
 <body>

@@ -10,10 +10,10 @@
             //========== CONTROL DE METODOS ==========
             public function control(string $metodo, array $partes): void
             {
-                $id = $partes[1] ?? null;
+                $parte = $partes[1] ?? null;
 
                 // url: /usuarios
-                if ($id === null) {
+                if ($parte === null) {
                     match ($metodo) {
                         'GET'  => $this->buscarUsuario(),
                         'POST' => $this->ingresarNuevoUsuario(),
@@ -21,9 +21,16 @@
                     };
                     return;
                 }
+                if($parte === "iniciarSesion"){
+                    match ($metodo){
+                        'POST'    => $this->iniciarSesionUsuario(),
+                        default  => noPermitido(),
+                    };
+                    return;
+                }
 
                 // url: usuarios/{id}
-                $idUsuario = validarId($id, 'ID inválido');
+                $idUsuario = validarId($parte, 'ID inválido');
 
                 if (isset($partes[2])) {
                     noEncontrado();
@@ -116,7 +123,7 @@
                 
                 //Mensaje recibido
                 if($resultado){
-                    respuesta(200, ['success' => true, 'Pacientes' => $resultado]);
+                    respuesta(200, ['success' => true, 'Usuarios' => $resultado]);
                 }
                 else{
                     respuesta(200, ['success' => true, 'Usuarios' => '']);
@@ -125,18 +132,54 @@
 
             //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             //========== POST ==========
-            function ingresarNuevoUsuario(): void {
-                $datos = leerJson();
+             //Inicio de sesion
+            function iniciarSesionUsuario(): void {
+                if (isset($_POST["correo"]) && isset($_POST["contrasena"])) {
 
-                $nombre = $datos["nombre"] ?? '';
-                $correo = $datos["correo"] ?? '';
-                $contrasena = $datos["contrasena"] ?? '';
-                $contrasenaValidar = $datos["contrasenaValidar"] ?? '';
-                $nivel = $datos["nivelEstudio"] ?? '';
-                $foto = $datos["urlFoto"] ?? '';
+                    $correo = trim($_POST["correo"]);
+                    $contrasena = $_POST["contrasena"];
+
+                    $resultado = $this->modelo->verficarUsuario($correo, $contrasena);
+
+                    switch ($resultado['estado']) {
+                        case 0:
+
+                            session_start();
+                            session_regenerate_id(true);
+
+                            $_SESSION['id_usuario'] = $resultado['usuario']['id_usuario'];
+                            $_SESSION['id_rol'] = $resultado['usuario']['id_rol'];
+                            $_SESSION['nombre_usuario'] = $resultado['usuario']['nombre'];
+
+                            respuesta(200, ['success' => true,'Mensaje' => 'Inicio de sesión exitoso']);
+                            return;
+
+                        case 1:
+                            respuesta(401, ['success' => false,'Mensaje' => 'Credenciales incorrectas']);
+                            return;
+
+                        case 2:
+                            respuesta(403, ['success' => false,'Mensaje' => 'Usuario bloqueado']);
+                            return;
+
+                        case 3:
+                            respuesta(401, ['success' => false,'Mensaje' => 'Contraseña incorrecta']);
+                            return;
+                    }
+                }
+            }
+
+            function ingresarNuevoUsuario(): void {
+
+                $nombre = $_POST["nombre"] ?? '';
+                $correo = $_POST["correo"] ?? '';
+                $contrasena = $_POST["contrasena"] ?? '';
+                $contrasenaValidar = $_POST["contrasenaValidar"] ?? '';
+                $nivel = $_POST["nivelEstudio"] ?? '';
+                $foto = '/imagenes';
 
                 //Si alguno de los campos ingresados esta vacio
-                if ( $nombre === '' || $correo === '' || $contrasena === '' || $contrasenaValidar === ''|| $nivel === '' || $foto === '') {
+                if ( $nombre === '' || $correo === '' || $contrasena === '' || $contrasenaValidar === ''|| $nivel === '') {
                     respuesta(400, ['success' => false, 'Mensaje' => 'Todos los campos son abligatorios']);
                 }
 

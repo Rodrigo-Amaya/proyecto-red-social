@@ -78,6 +78,36 @@
             return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         }
 
+        //Verificar usuario
+        public function verficarUsuario($correo, $contrasena){
+            $sql = ("SELECT id_usuario, nombre, id_rol, correo, contrasena, bloqueo_usuario FROM usuarios WHERE correo = ?");
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("s", $correo); 
+            
+            if($stmt->execute()){
+                $resultado = $stmt->get_result();
+                $usuario = $resultado->fetch_assoc();
+
+                if(!$usuario){
+                    $stmt->close();
+                    return ['estado' => 1];
+                }
+
+                $bloqueo = $usuario['bloqueo_usuario'];
+                if($bloqueo){
+                    return ['estado' => 2];
+                }
+
+                $contrasenaSQL = $usuario['contrasena'];
+
+                if(!password_verify($contrasena, $contrasenaSQL)){
+                    return ['estado' => 3];
+                }
+
+                return ['estado' => 0, 'usuario' => $usuario];
+            }
+        }
+
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== POST ==========
         public function agregarUsuario($nombre, $correo, $contrasena, $fecha, $nivel, $foto){
