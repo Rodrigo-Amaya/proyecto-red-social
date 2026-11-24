@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 14-11-2026 a las 23:03:49
+-- Tiempo de generación: 24-11-2026 a las 06:38:19
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -86,7 +86,7 @@ CREATE TABLE `comentarios` (
   `mensaje` text NOT NULL,
   `id_usuario` int(11) NOT NULL,
   `id_publicacion` int(11) NOT NULL,
-  `id_comentario_padre` int(11) NOT NULL,
+  `id_comentario_padre` int(11) DEFAULT NULL,
   `bloquear` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -271,7 +271,7 @@ ALTER TABLE `comentarios`
   ADD PRIMARY KEY (`id_comentario`),
   ADD KEY `comentario_usuario_fk` (`id_usuario`),
   ADD KEY `comentario_publicacion_fk` (`id_publicacion`),
-  ADD KEY `comentario_comentario_fk` (`id_comentario_padre`);
+  ADD KEY `comentario_comentario_fk` (`id_comentario_padre`) USING BTREE;
 
 --
 -- Indices de la tabla `likes_comentario`
