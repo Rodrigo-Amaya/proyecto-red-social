@@ -157,6 +157,55 @@
         }
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        //========== CORREO DE RECUPERACION ==========
+
+        public function recuperarContrasena($correo){
+            $validacion = $this->validarRecuperar($correo);
+
+            //Si pasa todas las validaciones
+            if($validacion === false){
+                return 1;
+            }
+            //Valores por defecto
+            date_default_timezone_set('America/El_Salvador');
+            $expiracion = new DateTime('now', new DateTimeZone('America/El_Salvador'));
+            $expiracion->modify('+30 minutes');
+            $fecha = $expiracion->format('Y-m-d H:i:s');
+
+            $token   = bin2hex(random_bytes(32));
+
+            $sql = "INSERT INTO token_reseteo 
+            (id_usuario, token, fecha_expiracion) VALUES (?,?,?)";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("iss", $validacion, $token, $fecha);
+            $stmt->execute();
+
+            return 0;
+        }
+
+        private function validarRecuperar($correo){
+            //validar si el correo existe y elñ usuario no este bloqueado
+            $sql = "SELECT id_usuario FROM usuarios WHERE correo = ? AND bloqueo_usuario = 0";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("s", $correo); 
+            $stmt->execute();
+            $resultado = $stmt->get_result();
+
+            if ($resultado->num_rows === 0) {
+                return false;
+            }
+
+            $usuario = $resultado->fetch_assoc();
+            return $usuario['id_usuario'];
+        }
+
+        //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        //========== CAMBIAR CONTRASEÑA ==========
+        public function cambiarContrasena($contrasena, $token){
+            
+        }
+
+        //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== IMAGEN DE PERFIL ==========
         public function guardarImagenPerfil($imagen, $idUsuario){
             $extension = validarDocumento($imagen);
@@ -222,7 +271,7 @@
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== PUT ==========
-        public function actualizarUsuario($id, $nombre, $correo, $contrasena_anterior,$contrasena, $nivel, $foto){
+        public function actualizarUsuario($id, $nombre, $correo, $contrasena_anterior,$contrasena, $nivel){
             $validacion = $this->validarPUT($id, $contrasena_anterior, $correo, $nivel);
             
             //si pasa todas las validaciones
@@ -233,9 +282,9 @@
             //hasheo de contraseña nueva
             $hash = password_hash($contrasena, PASSWORD_DEFAULT);
 
-            $sql = "UPDATE usuarios SET nombre = ?, correo = ?, contrasena = ?, id_nivel = ?, url_foto = ? WHERE id_usuario = ?";
+            $sql = "UPDATE usuarios SET nombre = ?, correo = ?, contrasena = ?, id_nivel = ? WHERE id_usuario = ?";
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("sssisi", $nombre, $correo, $hash, $nivel, $foto, $id); 
+            $stmt->bind_param("sssisi", $nombre, $correo, $hash, $nivel, $id); 
             $stmt->execute();
 
             return 0;
