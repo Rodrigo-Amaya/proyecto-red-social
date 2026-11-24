@@ -42,6 +42,30 @@ foreach ($publicaciones as &$publicacion) {
 
 unset($publicacion);
 
-require_once __DIR__ . '/public/views/publicaciones/inicio.php';
+// Navegacion entre paginas
+$page = $_GET['page'] ?? 'inicio';
 
-?>
+$pages = [
+    'inicio'  => [
+        'title' => 'Inicio',
+        'view'  => '/public/views/publicaciones/inicio.php'
+    ],
+    'perfil'   => [
+        'title' => 'Perfil',
+        'view'  => '/public/views/usuarios/perfil.php'
+    ],
+    'login' => [
+        'title' => 'Login',
+        'view'  => '/public/views/auth/login.php'
+    ],
+];
+
+if (!isset($pages[$page])) {
+    $page = 'inicio';
+}
+
+$pageTitle = $pages[$page]['title'];
+$currentPage = $page;
+$contentView = __DIR__ . $pages[$page]['view'];
+
+require_once __DIR__ . '/public/views/shared/layout.php';
