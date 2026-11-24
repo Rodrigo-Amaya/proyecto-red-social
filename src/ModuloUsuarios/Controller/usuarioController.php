@@ -37,6 +37,14 @@
                     return;
                 }
 
+                if($parte === "reseteoContrasena"){
+                    match ($metodo){
+                        'POST'    => $this->resetearContrasena(),
+                        default  => noPermitido(),
+                    };
+                    return;
+                }
+
                 // url: usuarios/{id}
                 $idUsuario = validarId($parte, 'ID inválido');
 
@@ -177,6 +185,29 @@
                 }
             }
 
+            //Generacion de token de reseteo
+            function resetearContrasena(): void{
+                if (isset($_POST["correoRecuperacion"])) {
+
+                    $correo = trim($_POST["correoRecuperacion"]);
+
+                    if ($correo === '') {
+                        respuesta(400, ['success' => false, 'Mensaje' => 'Campo sin llenar de correo']);
+                    }
+
+                    $resultado = $this->modelo->recuperarContrasena(
+                        $correo
+                    );
+
+                    if($resultado === 1){
+                        respuesta(409, ['success' => false, 'Mensaje' => 'Correo incorrecto o bloqueado']);
+                    }
+                    else{
+                        respuesta(200, ['success' => true, 'Mensaje' => 'Se ha enviado un correo de recuperación']);
+                    }
+                }
+            }
+
             function ingresarNuevoUsuario(): void {
 
                 $nombre = $_POST["nombre"] ?? '';
@@ -261,6 +292,14 @@
 
             //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             //========== PUT ==========
+
+            //cambio de contraseña
+            function cambiarContrasenaRecuperacion(): void {
+                $contrasena = $_POST["contrasenaNueva"] ?? '';
+                $contrasenaValidar = $_POST["contrasenaNuevaValidar"] ?? '';
+                $token = $_GET["token"];
+            }
+
             //Agregar psoteriormente actualización por medio se session no por ID
             function actualizarusuario(int $id): void {
                 $datos = leerJson();
@@ -271,7 +310,6 @@
                 $contrasenaNueva = $datos["contrasenaNueva"] ?? '';
                 $contrasenaNuevaValidar = $datos["contrasenaNuevaValidar"] ?? '';
                 $nivel = $datos["nivelEstudio"] ?? '';
-                $foto = $datos["urlFoto"] ?? '';
 
                 //Validaciones de campos
                 validarCamposVacios([$nombre]);
@@ -279,7 +317,6 @@
                 validarCamposVacios([$contrasenaAnterior]);
                 validarCamposVacios([$contrasenaNueva]);
                 validarCamposVacios([$contrasenaNuevaValidar]);
-                validarCamposVacios([$foto]);
                 validarCampoEntero($nivel);
 
                 validarContrasena($contrasenaNueva);
@@ -301,7 +338,6 @@
                     $contrasenaAnterior,
                     $contrasenaNueva,
                     $nivel,
-                    $foto
                 );
 
                 //Resultado recibido
