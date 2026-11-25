@@ -1,0 +1,187 @@
+/*-----------------------------------------------------------
+                    COLORES               
+-----------------------------------------------------------*/
+:root {
+    --color-primario:#205C47;
+    --color-secundario: #EFEDE3;
+    --fondo: #EEF1E8;
+    --fondo-secundario: #fff;
+
+    --texto: #253D35;
+    --texto-secundario: #738078;
+    --texto-seleccionado: #0b7433;
+    --texto-blanco: #fff;
+    --texto-etiquetas: #205C47;
+    --fondo-etiquetas: #EAF0E9;
+
+    --color-borde: #67756c;
+    --fondo-inputs: #ffffff;
+    --color-hover: #1a4b3a;
+    --color-pagina: #FFFCF5;
+    --color-sombra-pagina: #D5D1C5;
+
+    --color-error-fondo: #FFC0CB;
+    --color-error-borde: #fc5f79;
+    --color-error-texto: #B20032;
+}
+
+/*-----------------------------------------------------------
+                    HTML              
+-----------------------------------------------------------*/
+body {
+    display: grid; grid-template-columns: 300px 1fr;
+    font-family: Arial, Helvetica, sans-serif;
+    gap: 10px;
+    background-color: var(--fondo);
+    position: relative;
+}
+form {
+    width: 90%;
+}
+i {
+    font-size: x-large;
+    cursor: pointer;
+}
+
+/*-----------------------------------------------------------
+                    PANELES              
+-----------------------------------------------------------*/
+#panelDatosBasicos, #panelActualizarInfo, #panelCambioFoto{
+    background-color: var(--color-primario);
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 30px 30px 30px 30px;
+    border-radius: 1rem;
+    color: var(--texto-blanco);
+}
+#panelDatosBasicos{
+    max-height: fit-content;
+}
+#panelActualizarInfo{
+    background-color: var(--fondo-secundario);
+    color: var(--texto);
+}
+
+#panelCambioFoto{
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); z-index: 3;
+}
+#opacidad{
+    z-index: 2;
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100vw; height: 100vmax;
+    background-color: rgba(0, 0, 0, 0.25);
+}
+
+/*-----------------------------------------------------------
+                    INPUTS, BOTONES              
+-----------------------------------------------------------*/
+
+input {
+    all: unset; 
+    padding: 0px 0px 0px 15px;
+    width: 100%;
+}
+
+.contenedorInputs {
+    border: var(--color-borde) 1px solid; border-radius: 0.4rem;
+    background-color: var(--fondo-inputs);
+    height: 50px; width: calc(100%-15px);
+    color: var(--texto);
+    padding-right: 15px;
+    display: flex; justify-content: space-between; align-items: center;
+    margin: 5px 0 20px 0;
+}
+select {
+    all: unset; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+
+    border: var(--color-borde) 1px solid; border-radius: 0.4rem;
+    background-color: var(--fondo-inputs);
+    height: 50px; width: calc(100%-15px);
+    color: var(--texto);
+    padding: 0px 0px 0px 15px;
+    font-size: large;
+}
+
+button {
+    all: unset;
+    font-size: medium;
+    margin: 10px 0 30px 0;
+    display: flex; justify-content: center; align-items: center;
+    background-color: var(--color-secundario);
+    color: var(--texto-etiquetas);
+    min-width: 100%; padding: 15px 0px 15px 0px;font-weight: bold;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+}
+#panelActualizarInfo button{
+    background-color: var(--color-primario);
+    color: var(--texto-blanco);
+}
+#botonSalir {
+    min-width: 50px; max-height: 50px;
+    border-radius: 100%;
+    align-self: flex-end;
+}
+#cerrarSesion{
+    background-color: var(--color-error-fondo);
+    color: var(--color-error-texto);
+}
+
+#panelDatosBasicos img{
+    border-radius: 100%;
+    background-color: var(--color-secundario);
+}
+
+/*-----------------------------------------------------------
+                    TEXTOS             
+-----------------------------------------------------------*/
+p {
+    margin: 0 0 20px 0;
+}
+h2{
+    margin: 0 0 5px 0;
+}
+
+#rol{
+    background-color: var(--fondo-etiquetas);
+    color: var(--texto-etiquetas);
+    padding: 5px 15px 5px 15px;
+    border-radius: 1rem;
+}
+
+/*-----------------------------------------------------------
+                    PROFESOR Y ADMINISTRADOR
+-----------------------------------------------------------*/
+#datosProfesor {
+    margin-top: 20px;
+    text-align: center;
+}
+#datosProfesor p {
+    margin: 0 0 12px 0;
+}
+#datosProfesor span {
+    display: block;
+    font-size: 13px;
+    opacity: 0.75;
+}
+
+.contenedorBoton {
+    width: 90%;
+}
+#botonSolicitudes {
+    background-color: var(--color-primario);
+    color: var(--texto-blanco);
+}
+#botonSolicitudes:hover {
+    background-color: var(--color-hover);
+}

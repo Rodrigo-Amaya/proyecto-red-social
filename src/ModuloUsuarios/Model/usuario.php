@@ -17,7 +17,12 @@
 
         //---Busqueda por ID---
         public function buscarPorID($id){
-            $sql = ("SELECT nombre, correo, id_rol, fecha_registro, id_nivel, url_foto  FROM usuarios WHERE id_usuario = ? AND bloqueo_usuario = 0");
+            $sql = ("SELECT u.nombre, u.correo, u.id_rol, r.nombre AS rol, u.fecha_registro, n.nombre AS nivel, url_foto  FROM usuarios u
+            JOIN  nivel_estudio n
+            ON u.id_nivel = n.id_nivel
+            JOIN roles r
+            ON u.id_rol = r.id_rol
+            WHERE u.id_usuario = ? AND u.bloqueo_usuario = 0");
             $stmt = $this->conn->prepare($sql);
             $stmt->bind_param("i", $id); 
             
@@ -123,9 +128,9 @@
             $hash = password_hash($contrasena, PASSWORD_DEFAULT);
             
             $sql = "INSERT INTO usuarios 
-            (nombre, correo, contrasena, id_rol, fecha_registro, id_nivel) VALUES (?,?,?,?,?,?,?)";
+            (nombre, correo, contrasena, id_rol, fecha_registro, id_nivel) VALUES (?,?,?,?,?,?)";
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("sssisis", $nombre, $correo, $hash, $rol, $fecha, $nivel);
+            $stmt->bind_param("sssisi", $nombre, $correo, $hash, $rol, $fecha, $nivel);
             $stmt->execute();
             return 0;
             
@@ -272,7 +277,7 @@
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== PUT ==========
         public function actualizarUsuario($id, $nombre, $correo, $contrasena_anterior,$contrasena, $nivel){
-            $validacion = $this->validarPUT($id, $contrasena_anterior, $correo, $nivel);
+            $validacion = $this->validarPUT($id, $contrasena_anterior, $contrasena, $correo, $nivel);
             
             //si pasa todas las validaciones
             if($validacion !== 0){
@@ -280,54 +285,69 @@
             }
 
             //hasheo de contraseña nueva
-            $hash = password_hash($contrasena, PASSWORD_DEFAULT);
+            $hash = $contrasena !== null
+                ? password_hash($contrasena, PASSWORD_DEFAULT)
+                : null;
 
-            $sql = "UPDATE usuarios SET nombre = ?, correo = ?, contrasena = ?, id_nivel = ? WHERE id_usuario = ?";
+            $sql = "UPDATE usuarios SET
+                nombre = COALESCE(?, nombre),
+                correo = COALESCE(?, correo),
+                contrasena = COALESCE(?, contrasena),
+                id_nivel = COALESCE(?, id_nivel)
+            WHERE id_usuario = ?";
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("sssisi", $nombre, $correo, $hash, $nivel, $id); 
+            $stmt->bind_param("sssii", $nombre, $correo, $hash, $nivel, $id); 
             $stmt->execute();
 
             return 0;
         }
 
         //validaciones para PUT
-        public function validarPUT($id, $contrasena, $correo, $nivel){
+        public function validarPUT($id, $contrasenaAnterior, $contrasena, $correo, $nivel){
             //validar si la id existe en la base de datos la ID
-            $sql = "SELECT * FROM usuarios WHERE id_usuario = ? AND bloqueo_usuario = 0";
+            $sql = "SELECT contrasena FROM usuarios WHERE id_usuario = ? AND bloqueo_usuario = 0";
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("i", $id); 
+            $stmt->bind_param("i", $id);
             $stmt->execute();
-            if ($stmt->get_result()->num_rows == 0) {
+            $resultado = $stmt->get_result();
+            if($resultado->num_rows === 0){
                 return 1;
             }
 
-            //validar si la contraseña anterior coincide
-            $sql = "SELECT contrasena FROM usuarios WHERE id_usuario = ?";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("i", $id); 
-            $stmt->execute();
-            $resultado = $stmt->get_result();
             $usuario = $resultado->fetch_assoc();
-            if(!password_verify($contrasena, $usuario['contrasena'])){
-                return 2;
+
+            //validar si la contraseña anterior coincide
+            if($contrasena !== null && $contrasena !== ''){
+                if($contrasenaAnterior === null || $contrasenaAnterior === ''){
+                    return 2;
+                }
+                if(!password_verify($contrasenaAnterior, $usuario['contrasena'])){
+                    return 2;
+                }
             }
 
             //validar si el correo ya esta siendo usado por otro usuario
-            $sql = "SELECT id_usuario FROM usuarios WHERE correo = ? AND id_usuario != ?";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("si", $correo, $id);
-            $stmt->execute();
-            if ($stmt->get_result()->num_rows > 0) {
-                return 3;
+            if($correo !== null){
+                $sql = "SELECT id_usuario FROM usuarios WHERE correo = ? AND id_usuario != ?";
+                $stmt = $this->conn->prepare($sql);
+                $stmt->bind_param("si", $correo, $id);
+                $stmt->execute();
+
+                if($stmt->get_result()->num_rows > 0){
+                    return 3;
+                }
             }
             
             //validar si el nivel de estudio se encuentra en la base de datos
-            $sql = "SELECT id_nivel FROM nivel_estudio WHERE id_nivel = ?";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("i", $nivel); 
-            $stmt->execute();
-            if ($stmt->get_result()->num_rows === 0) {
-                return 4;
+            if($nivel !== null){
+                $sql = "SELECT id_nivel FROM nivel_estudio WHERE id_nivel = ?";
+                $stmt = $this->conn->prepare($sql);
+                $stmt->bind_param("i", $nivel);
+                $stmt->execute();
+
+                if($stmt->get_result()->num_rows === 0){
+                    return 4;
+                }
             }
             return 0;
         }

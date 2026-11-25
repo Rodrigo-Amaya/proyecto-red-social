@@ -29,6 +29,7 @@ try {
         'usuarios'  => fn() => new usuarioController(new usuario($conn)),
         'publicacion' => fn() => new PublicacionController(new Publicacion($conn)),
         'publicaciones'  => fn() => new PublicacionController(new Publicacion($conn)),
+        'profesores'  => fn() => new profesoresController(new profesor($conn)),
         'comentarios' => fn() => new comentarioController(new comentario($conn)),
     ];
 
