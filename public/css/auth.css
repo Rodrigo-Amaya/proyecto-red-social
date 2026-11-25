@@ -1,0 +1,253 @@
+/*-----------------------------------------------------------
+                    COLORES               
+-----------------------------------------------------------*/
+:root {
+    --color-primario:#205C47;
+    --color-secundario: #EFEDE3;
+    --fondo: #EEF1E8;
+    --fondo-secundario: #fff;
+
+    --texto: #253D35;
+    --texto-secundario: #738078;
+    --texto-seleccionado: #0b7433;
+    --texto-blanco: #fff;
+    --texto-etiquetas: #205C47;
+    --fondo-etiquetas: #EAF0E9;
+
+    --color-borde: #67756c;
+    --fondo-inputs: #ffffff;
+    --color-hover: #1a4b3a;
+    --color-pagina: #FFFCF5;
+    --color-sombra-pagina: #D5D1C5;
+
+    --color-error-fondo: #FFC0CB;
+    --color-error-borde: #fc5f79;
+    --color-error-texto: #B20032;
+}
+
+/*-----------------------------------------------------------
+                ELEMENTOS POR DEFECTO DE HTML               
+-----------------------------------------------------------*/
+body{
+    margin: 0; min-height: 100dvh;
+    display: grid; place-items: center;
+    background-color: var(--fondo);
+    font-family: Arial, Helvetica, sans-serif;
+    color: var(--texto);
+}
+
+p {
+    color: var(--texto-secundario);
+    font-size: 15px;
+}
+
+hr {
+    width: 2px; width: 100%;
+    margin: 30px 0 30px 0;
+}
+
+/*-----------------------------------------------------------
+                        CONTENEDORES               
+-----------------------------------------------------------*/
+.contenedor, .contenedorRecuperar {
+    background-color: var(--color-primario);
+    width: 60vw; height: 70vh;
+    display: flex; flex-direction: row;
+    justify-content: center; align-items: center;
+    color: var(--color-texto);
+    border-radius: 2rem;
+    border: var(--color-primario) 3px solid;
+    position: relative;
+    z-index: 1;
+}
+/*Cambio para recuperación de contraseña*/
+.contenedorRecuperar{
+    width: 40vw;
+}
+
+.subContenedor, .subContenedorRecuperar {
+    position: absolute;
+    display: flex; justify-content: left; align-items: start;
+    width: 56vw; height: 69vh;
+    top: -3vh;
+    background-color: var(--color-pagina);
+    border: 8px solid #F1EDE3; border-top: 0;
+    border-radius: 2rem;
+    z-index: 4;
+    overflow: hidden;
+}
+/*Cambio para recuperación de contraseña*/
+.subContenedorRecuperar{
+    width: 37vw;
+    border: 8px solid var(--color-sombra-pagina);
+}
+
+.contenedorElementos {
+    position: relative;
+    width: 50vw; height: 100%;
+    display: flex; padding: 30px 60px 30px 60px;
+    justify-content: left; align-items: start;
+    flex-direction: column;
+    z-index: 6;
+}
+
+/*-----------------------------------------------------------
+                        PANELES               
+-----------------------------------------------------------*/
+#login {
+    background: linear-gradient(90deg, var(--color-pagina) 90%, var(--color-sombra-pagina) 100%);
+}
+#registro {
+    background: var(--color-pagina);
+}
+
+/*-----------------------------------------------------------
+                      FORMULARIOS               
+-----------------------------------------------------------*/
+#formLogin, #formRegistro, #formCorreoRecuperacion, #formCambioContrasena{
+    display: flex; flex-direction: column; 
+    width: 100%;
+}
+/*Cambio para recuperación de contraseña*/
+#formCorreoRecuperacion, #formCambioContrasena{
+    padding: 30px 60px 30px 60px;
+}
+
+/*-----------------------------------------------------------
+                        INPUTS               
+-----------------------------------------------------------*/
+input {
+    all: unset; 
+    padding: 0px 0px 0px 15px;
+    width: 100%;
+}
+
+.contenedorInputs {
+    border: var(--color-borde) 1px solid; border-radius: 0.4rem;
+    background-color: var(--fondo-inputs);
+    height: 50px; width: calc(100%-15px);
+    color: var(--texto);
+    padding-right: 15px;
+    display: flex; justify-content: space-between; align-items: center;
+}
+
+/*-----------------------------------------------------------
+                      CONTRASEÑA               
+-----------------------------------------------------------*/
+i {
+    font-size: x-large;
+    cursor: pointer;
+}
+
+/*-----------------------------------------------------------
+                        SELECT             
+-----------------------------------------------------------*/
+select {
+    all: unset; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+
+    border: var(--color-borde) 1px solid; border-radius: 0.4rem;
+    background-color: var(--fondo-inputs);
+    height: 50px; width: calc(100%-15px);
+    color: var(--texto);
+    padding: 0px 0px 0px 15px;
+    font-size: large;
+}
+/*-----------------------------------------------------------
+                        TEXTOS              
+-----------------------------------------------------------*/
+#registrarse, #iniciarSesion{
+    color: var(--texto-etiquetas); cursor: pointer;
+}
+#errorLogin, #errorRegistro{
+    color: var(--color-error-texto);
+    border: var(--color-error-borde) 1px solid;
+    background-color: var(--color-error-fondo);
+    border-radius: 2rem;
+    display: none; justify-content: center; align-items: center;
+    width: 100%; 
+}
+
+#olvidoContrasena{
+    cursor: pointer;
+    color: var(--texto-etiquetas);
+}
+#olvidoContrasena:hover{
+    color: var(--texto-seleccionado);
+    text-decoration: underline;
+}
+
+/*-----------------------------------------------------------
+                        BOTONES               
+-----------------------------------------------------------*/
+.btnSubmit, #btnRegistro {
+    all: unset;
+    display: flex; justify-content: center; align-items: center;
+    background-color: var(--color-primario);
+    color: var(--texto-blanco);
+    min-width: 100%; padding: 15px 0px 15px 0px;
+    font-size: x-large; font-weight: bold;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+}
+.btnSubmit:hover {
+    background-color: var(--color-hover);
+}
+
+#btnRegistro{
+    background-color: transparent;
+    color: var(--texto);
+    border: 1px solid var(--color-primario);
+}
+
+/*-----------------------------------------------------------
+                   ELEMENTOS DECORATIVOS               
+-----------------------------------------------------------*/
+.hojasFondo, .hojasFondo2, .hojasFondoRecuperar{
+    position: absolute;
+    width: 58vw; height: 69vh;
+    top: -1vh;
+    background-color: #F1EDE3;
+    border-radius: 2rem;
+    border: 8px solid var(--color-sombra-pagina);
+    border-top: 0;
+    z-index: 2;
+}
+.hojasFondo2{
+    z-index: 3; top: -2vh; width: 57vw;
+    background-color: var(--color-sombra-pagina);
+    border: 8px solid var(--color-pagina);
+    border-top: 0;
+    border-radius: 2rem;
+}
+
+/*Cambio para recuperación de contraseña*/
+.hojasFondoRecuperar{
+    width: 38vw;
+}
+
+/*-----------------------------------------------------------
+                   CAMBIO A DISPOSITIVOS MOVILES               
+-----------------------------------------------------------*/
+@media screen and (max-width: 1503px){
+
+    /*---CONTENEDORES---*/
+    .contenedor {
+        width: 60vw; height: 80vh;
+        display: flex; flex-direction: column;
+    }
+    .subContenedor {
+        width: 100%; height: 100%;
+        display: flex; flex-direction: column;
+        justify-content: center; text-align: center;
+        padding: 40px 10px 40px 10px;
+        position: relative;
+    }
+    #pagina{
+        display: none;
+    }
+    #registro{
+        display: none;
+    }
+}

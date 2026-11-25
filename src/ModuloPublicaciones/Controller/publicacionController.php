@@ -11,6 +11,9 @@
             public function control(string $metodo, array $partes): void
             {
                 $id = $partes[1] ?? null;
+                if ($metodo === 'POST' && $id !== null && strtoupper($_GET['_method'] ?? '') === 'PUT') {
+                    $metodo = 'PUT';
+                }
 
                 // url: /publicacion
                 if ($id === null) {
@@ -214,62 +217,68 @@
             //========== PUT ==========
             //Agregar psoteriormente actualización por medio se session no por ID
             function actualizarPublicacion(int $id): void {
-                $datos = leerJson();
+                $titulo  = trim($_POST['titulo'] ?? '');
+                $mensaje = trim($_POST['mensaje'] ?? '');
+                $materia = trim($_POST['id_materia'] ?? '');
+                
+                //Si alguno de los campos ingresados esta vacio
+                if ( $titulo === '' || $mensaje === '' || $materia === '') {
+                    respuesta(400, ['success' => false, 'Mensaje' => 'Titulo, mensaje y materia son obligatorios']);
+                }
 
-                $titulo = $datos['titulo'] ?? '';
-                $mensaje = $datos['mensaje'] ?? '';
-                $usuario = $datos['usuario'] ?? '';
-                $materia = $datos["materia"] ?? '';
-
-                //Validaciones de campos que fueron modificados
-                validarCamposVacios([$titulo]);
-                validarCamposVacios([$mensaje]);
-                validarCamposVacios([$usuario]);
-                validarCamposVacios([$materia]);
-
-                //Que el titulo no se amayor a 100 caracteres
-                if(str_word_count($titulo) > 100){
+                if (str_word_count($titulo) > 100) {
                     respuesta(400, ['success' => false, 'Mensaje' => 'Titulo muy largo']);
                 }
 
-                //Que el mensaje no se amayor a 500 caracteres
-                if(str_word_count($mensaje) > 500){
+                if (str_word_count($mensaje) > 500) {
                     respuesta(400, ['success' => false, 'Mensaje' => 'Mensaje muy largo']);
                 }
 
-                //Que el usuario no sea texto
-                validarCampoEntero($usuario);
-
-                //Que la materia no sea texto
                 validarCampoEntero($materia);
+
+                $archivosNuevos = [];   // posicion => archivo subido
+                $posicionesEliminar = []; // posiciones a borrar
+
+                for ($n = 1; $n <= 3; $n++) {
+                    $archivo = $_FILES["archivo_$n"] ?? null;
+
+                    // Se subió un archivo en esta posición: se valida ANTES de tocar nada
+                    if ($archivo !== null && $archivo['error'] !== UPLOAD_ERR_NO_FILE) {
+                        if (validarDocumento($archivo) === false) {
+                            respuesta(400, ['success' => false, 'Mensaje' => "El archivo_$n no es valido o esta corrupto"]);
+                        }
+                        $archivosNuevos[$n] = $archivo;
+                    }
+                    // Si no subió archivo pero pidió eliminar esa posición
+                    elseif (($_POST["eliminar_$n"] ?? '') === '1') {
+                        $posicionesEliminar[] = $n;
+                    }
+                }
 
                 $resultado = $this->modelo->actualizarPublicacion(
                     $id,
                     $titulo,
                     $mensaje,
-                    $usuario,
-                    $materia
+                    $materia,
+                    $archivosNuevos,
+                    $posicionesEliminar
                 );
 
-                //Resultado recibido
-                switch($resultado){
+                switch ($resultado) {
                     case 1:
-                        respuesta(404, ['success' => false, 'Mensaje:' => 'Publicación no encontrada o bloqueada']);
+                        respuesta(404, ['success' => false, 'Mensaje' => 'Publicación no encontrada o bloqueada']);
                         break;
                     case 2:
-                        respuesta(404, ['success' => false, 'Mensaje:' => 'Usuario no encontrado o bloqueado']);
+                        respuesta(400, ['success' => false, 'Mensaje' => 'No se encontro la materia']);
                         break;
                     case 3:
-                        respuesta(404, ['success' => false, 'Mensaje:' => 'Usuario no coincide con el que publico']);
+                        respuesta(403, ['success' => false, 'Mensaje' => 'Ya no se puede modificar la publicación']);
                         break;
                     case 4:
-                        respuesta(404, ['success' => false, 'Mensaje:' => 'No se encontro la materia']);
-                        break;
-                    case 5:
-                        respuesta(404, ['success' => false, 'Mensaje:' => 'Ya no se puede modificar la publicación']);
+                        respuesta(500, ['success' => false, 'Mensaje' => 'Error al guardar los cambios o los documentos']);
                         break;
                     default:
-                        respuesta(200, ['success' => true, 'Mensaje:' => 'Publicación actualizada correctamente']);
+                        respuesta(200, ['success' => true, 'Mensaje' => 'Publicación actualizada correctamente']);
                 }
             }
 

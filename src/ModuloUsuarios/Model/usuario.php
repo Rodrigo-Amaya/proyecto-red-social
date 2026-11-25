@@ -11,8 +11,8 @@
 
         public function listarUsuarios(){
             $sql = "SELECT nombre, correo, id_rol, fecha_registro, id_nivel, url_foto FROM usuarios WHERE bloqueo_usuario = 0";
-            $pacientes = $this->conn->query($sql);
-            return $pacientes->fetch_all(MYSQLI_ASSOC);
+            $usuarios = $this->conn->query($sql);
+            return $usuarios->fetch_all(MYSQLI_ASSOC);
         }
 
         //---Busqueda por ID---
@@ -78,10 +78,40 @@
             return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         }
 
+        //Verificar usuario
+        public function verficarUsuario($correo, $contrasena){
+            $sql = ("SELECT id_usuario, nombre, id_rol, correo, contrasena, bloqueo_usuario FROM usuarios WHERE correo = ?");
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("s", $correo); 
+            
+            if($stmt->execute()){
+                $resultado = $stmt->get_result();
+                $usuario = $resultado->fetch_assoc();
+
+                if(!$usuario){
+                    $stmt->close();
+                    return ['estado' => 1];
+                }
+
+                $bloqueo = $usuario['bloqueo_usuario'];
+                if($bloqueo){
+                    return ['estado' => 2];
+                }
+
+                $contrasenaSQL = $usuario['contrasena'];
+
+                if(!password_verify($contrasena, $contrasenaSQL)){
+                    return ['estado' => 3];
+                }
+
+                return ['estado' => 0, 'usuario' => $usuario];
+            }
+        }
+
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== POST ==========
-        public function agregarUsuario($nombre, $correo, $contrasena, $fecha, $nivel, $foto){
-            $validacion = $this->validarPOST($nombre, $correo, $nivel);
+        public function agregarUsuario($nombre, $correo, $contrasena, $fecha, $nivel){
+            $validacion = $this->validarPOST($correo, $nivel);
 
             //Si pasa todas las validaciones
             if($validacion !== 0){
@@ -93,16 +123,16 @@
             $hash = password_hash($contrasena, PASSWORD_DEFAULT);
             
             $sql = "INSERT INTO usuarios 
-            (nombre, correo, contrasena, id_rol, fecha_registro, id_nivel, url_foto) VALUES (?,?,?,?,?,?,?)";
+            (nombre, correo, contrasena, id_rol, fecha_registro, id_nivel) VALUES (?,?,?,?,?,?,?)";
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("sssisis", $nombre, $correo, $hash, $rol, $fecha, $nivel, $foto);
+            $stmt->bind_param("sssisis", $nombre, $correo, $hash, $rol, $fecha, $nivel);
             $stmt->execute();
             return 0;
             
         }
 
         //Validaciones para POST
-        public function validarPOST($nombre, $correo, $nivel){
+        public function validarPOST($correo, $nivel){
 
             //validar si el correo ya esta en uso
             $sql = "SELECT id_usuario FROM usuarios WHERE correo = ?";
@@ -127,8 +157,121 @@
         }
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        //========== CORREO DE RECUPERACION ==========
+
+        public function recuperarContrasena($correo){
+            $validacion = $this->validarRecuperar($correo);
+
+            //Si pasa todas las validaciones
+            if($validacion === false){
+                return 1;
+            }
+            //Valores por defecto
+            date_default_timezone_set('America/El_Salvador');
+            $expiracion = new DateTime('now', new DateTimeZone('America/El_Salvador'));
+            $expiracion->modify('+30 minutes');
+            $fecha = $expiracion->format('Y-m-d H:i:s');
+
+            $token   = bin2hex(random_bytes(32));
+
+            $sql = "INSERT INTO token_reseteo 
+            (id_usuario, token, fecha_expiracion) VALUES (?,?,?)";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("iss", $validacion, $token, $fecha);
+            $stmt->execute();
+
+            return 0;
+        }
+
+        private function validarRecuperar($correo){
+            //validar si el correo existe y elñ usuario no este bloqueado
+            $sql = "SELECT id_usuario FROM usuarios WHERE correo = ? AND bloqueo_usuario = 0";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("s", $correo); 
+            $stmt->execute();
+            $resultado = $stmt->get_result();
+
+            if ($resultado->num_rows === 0) {
+                return false;
+            }
+
+            $usuario = $resultado->fetch_assoc();
+            return $usuario['id_usuario'];
+        }
+
+        //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        //========== CAMBIAR CONTRASEÑA ==========
+        public function cambiarContrasena($contrasena, $token){
+            
+        }
+
+        //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        //========== IMAGEN DE PERFIL ==========
+        public function guardarImagenPerfil($imagen, $idUsuario){
+            $extension = validarDocumento($imagen);
+            //Si no regreso una extencion
+            if ($extension === false) {
+                return false;
+            }
+
+            $subdirectorio = 'imagenes/';
+
+            //Si no es una imagen
+            if (!in_array($extension, ["jpg", "png", "webp"])) {
+                return false;
+            }
+
+            $directorio = __DIR__ . '/../../../documentos/usuarios/' . $subdirectorio;
+
+            // Crear directorio si no existe...
+
+            $nombre = "imagen_perfil_usuario_{$idUsuario}" . uniqid() . ".{$extension}";
+
+            $rutaFisica = $directorio . $nombre;
+
+            if (!move_uploaded_file($imagen['tmp_name'], $rutaFisica)) {
+                return false;
+            }
+
+            return "documentos/usuarios/" . $subdirectorio . $nombre;
+        }
+
+        public function cambiarImagenPerfil($idUsuario, $imagen){
+            $validacion = $this->validarCambioImagen($idUsuario);
+
+            if(!$validacion){
+                return 1;
+            }
+
+            $ruta = $this->guardarImagenPerfil($imagen, $idUsuario);
+
+            if($ruta === false) {
+                return 2;
+            }
+
+            $sql = "UPDATE usuarios SET url_foto = ? WHERE id_usuario = ?";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("si", $ruta, $idUsuario); 
+            $stmt->execute();
+
+            return 0;
+        }
+
+        public function validarCambioImagen($usuario){
+            //validar si el usaurio existe y no este bloqueado
+            $sql = "SELECT id_usuario FROM usuarios WHERE id_usuario = ? AND bloqueo_usuario = 0";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("i", $usuario); 
+            $stmt->execute();
+            if ($stmt->get_result()->num_rows == 0) {
+                return false;
+            }
+            return true;
+        }
+
+        //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== PUT ==========
-        public function actualizarUsuario($id, $nombre, $correo, $contrasena_anterior,$contrasena, $nivel, $foto){
+        public function actualizarUsuario($id, $nombre, $correo, $contrasena_anterior,$contrasena, $nivel){
             $validacion = $this->validarPUT($id, $contrasena_anterior, $correo, $nivel);
             
             //si pasa todas las validaciones
@@ -139,9 +282,9 @@
             //hasheo de contraseña nueva
             $hash = password_hash($contrasena, PASSWORD_DEFAULT);
 
-            $sql = "UPDATE usuarios SET nombre = ?, correo = ?, contrasena = ?, id_nivel = ?, url_foto = ? WHERE id_usuario = ?";
+            $sql = "UPDATE usuarios SET nombre = ?, correo = ?, contrasena = ?, id_nivel = ? WHERE id_usuario = ?";
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("sssisi", $nombre, $correo, $hash, $nivel, $foto, $id); 
+            $stmt->bind_param("sssisi", $nombre, $correo, $hash, $nivel, $id); 
             $stmt->execute();
 
             return 0;
