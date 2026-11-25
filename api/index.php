@@ -34,6 +34,7 @@ try {
         'auth'  => fn() => new AuthController(new usuario($conn)),
         'niveles'  => fn() => new NivelEstudioController(new NivelEstudio($conn)),
         'publicaciones'  => fn() => new PublicacionController(new Publicacion($conn)),
+        'profesores'  => fn() => new profesoresController(new profesor($conn)),
         'comentarios' => fn() => new comentarioController(new comentario($conn)),
         'materias'  => fn() => new MateriaController(new Materia($conn)),
     ];
