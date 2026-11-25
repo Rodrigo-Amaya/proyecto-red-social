@@ -349,3 +349,10 @@ button {
         display: none;
     }
 }
+.btn-guardar.guardada {
+    color: var(--color-button);
+}
+
+.btn-guardar.guardada svg {
+    fill: currentColor;
+}

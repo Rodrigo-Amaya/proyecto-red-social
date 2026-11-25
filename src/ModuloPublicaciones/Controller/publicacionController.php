@@ -27,6 +27,23 @@
                     return;
                 }
 
+                // URL: /publicacion/guardadas
+                if ($id === 'guardadas') {
+
+                    if (isset($partes[2])) {
+                        noEncontrado();
+                        return;
+                    }
+
+                    if ($metodo !== 'GET') {
+                        noPermitido();
+                        return;
+                    }
+
+                    $this->obtenerPublicacionesGuardadas();
+                    return;
+                }
+
                 // url: /publicacion
                 if ($id === null) {
                     match ($metodo) {
@@ -39,6 +56,23 @@
 
                 // url: usuarios/{id}
                 $idPublicacion = validarId($id, 'ID inválido');
+
+                // URL: /publicacion/{idPublicacion}/guardar
+                if (($partes[2] ?? null) === 'guardar') {
+
+                    if (isset($partes[3])) {
+                        noEncontrado();
+                        return;
+                    }
+
+                    match ($metodo) {
+                        'POST'   => $this->guardarPublicacion($idPublicacion),
+                        'DELETE' => $this->quitarPublicacionGuardada($idPublicacion),
+                        default  => noPermitido(),
+                    };
+
+                    return;
+                }
 
                 if (isset($partes[2])) {
                     noEncontrado();
@@ -176,6 +210,146 @@
                     'mensaje' => 'Publicaciones obtenidas correctamente',
                     'publicaciones' => $resultado ?: []
                 ]);
+            }
+
+            //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            //========== PUBLICACIONES GUARDADAS ==========
+
+            // Obtener publicaciones guardadas
+            public function obtenerPublicacionesGuardadas(): void {
+
+                $usuario = $_GET['id_usuario'] ?? '';
+
+                if (!is_scalar($usuario) || trim((string)$usuario) === '') {
+                    respuesta(400, [
+                        'success' => false,
+                        'mensaje' => 'El ID del usuario es obligatorio'
+                    ]);
+                    return;
+                }
+
+                validarCampoEntero($usuario);
+
+                $resultado = $this->modelo->publicacionesGuardadas(
+                    (int)$usuario
+                );
+
+                if ($resultado === false) {
+                    respuesta(404, [
+                        'success' => false,
+                        'mensaje' => 'Usuario no encontrado o bloqueado'
+                    ]);
+                    return;
+                }
+
+                respuesta(200, [
+                    'success' => true,
+                    'mensaje' => 'Publicaciones guardadas obtenidas correctamente',
+                    'publicaciones' => $resultado
+                ]);
+            }
+
+
+            // Guardar publicación
+            public function guardarPublicacion(int $idPublicacion): void {
+
+                $datos = leerJson();
+
+                $usuario = $datos['id_usuario'] ?? '';
+
+                if (!is_scalar($usuario) || trim((string)$usuario) === '') {
+                    respuesta(400, [
+                        'success' => false,
+                        'mensaje' => 'El ID del usuario es obligatorio'
+                    ]);
+                    return;
+                }
+
+                validarCampoEntero($usuario);
+
+                $resultado = $this->modelo->guardarPublicacion(
+                    (int)$usuario,
+                    $idPublicacion
+                );
+
+                switch ($resultado) {
+
+                    case 0:
+                        respuesta(201, [
+                            'success' => true,
+                            'mensaje' => 'Publicación guardada correctamente'
+                        ]);
+                        break;
+
+                    case 1:
+                        respuesta(404, [
+                            'success' => false,
+                            'mensaje' => 'Usuario no encontrado o bloqueado'
+                        ]);
+                        break;
+
+                    case 2:
+                        respuesta(404, [
+                            'success' => false,
+                            'mensaje' => 'Publicación no encontrada o bloqueada'
+                        ]);
+                        break;
+
+                    case 3:
+                        respuesta(409, [
+                            'success' => false,
+                            'mensaje' => 'La publicación ya se encuentra guardada'
+                        ]);
+                        break;
+                }
+            }
+
+
+            // Quitar publicación de guardados
+            public function quitarPublicacionGuardada(int $idPublicacion): void {
+
+                $datos = leerJson();
+
+                $usuario = $datos['id_usuario'] ?? '';
+
+                if (!is_scalar($usuario) || trim((string)$usuario) === '') {
+                    respuesta(400, [
+                        'success' => false,
+                        'mensaje' => 'El ID del usuario es obligatorio'
+                    ]);
+                    return;
+                }
+
+                validarCampoEntero($usuario);
+
+                $resultado = $this->modelo->quitarPublicacionGuardada(
+                    (int)$usuario,
+                    $idPublicacion
+                );
+
+                switch ($resultado) {
+
+                    case 0:
+                        respuesta(200, [
+                            'success' => true,
+                            'mensaje' => 'Publicación eliminada de guardados correctamente'
+                        ]);
+                        break;
+
+                    case 1:
+                        respuesta(404, [
+                            'success' => false,
+                            'mensaje' => 'Usuario no encontrado o bloqueado'
+                        ]);
+                        break;
+
+                    case 2:
+                        respuesta(404, [
+                            'success' => false,
+                            'mensaje' => 'La publicación no se encuentra en los guardados del usuario'
+                        ]);
+                        break;
+                }
             }
 
             //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
