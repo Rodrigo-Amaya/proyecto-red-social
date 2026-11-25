@@ -94,11 +94,58 @@ hr {
 /*-----------------------------------------------------------
                         PANELES               
 -----------------------------------------------------------*/
-#login {
+#login, #portadaIzq {
     background: linear-gradient(90deg, var(--color-pagina) 90%, var(--color-sombra-pagina) 100%);
 }
-#registro {
+#registro, #portadaDer {
     background: var(--color-pagina);
+}
+
+/* Solo se ve una página con formulario; la otra muestra la portada */
+.subContenedor.modo-login #registro,
+.subContenedor.modo-login #portadaIzq,
+.subContenedor.modo-registro #login,
+.subContenedor.modo-registro #portadaDer {
+    display: none;
+}
+
+/* Portada */
+.portada {
+    justify-content: center; 
+    align-items: center;
+    text-align: center;
+}
+.portadaTitulo {
+    font-size: 64px;
+    color: var(--color-primario);
+    margin-bottom: 5px;
+}
+
+/* Enlace para cambiar de formulario */
+.cambioPanel {
+    margin-top: 20px;
+    text-align: center;
+}
+.cambioPanel a {
+    color: var(--texto-etiquetas);
+    font-weight: bold;
+    cursor: pointer;
+}
+.cambioPanel a:hover {
+    color: var(--texto-seleccionado);
+    text-decoration: underline;
+}
+
+/* Desvanecido corto al cambiar de página */
+@keyframes aparecer {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+.contenedorElementos {
+    animation: aparecer 0.2s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+    .contenedorElementos { animation: none; }
 }
 
 /*-----------------------------------------------------------
@@ -230,7 +277,7 @@ select {
 /*-----------------------------------------------------------
                    CAMBIO A DISPOSITIVOS MOVILES               
 -----------------------------------------------------------*/
-@media screen and (max-width: 1503px){
+@media screen and (max-width: 1300px){
 
     /*---CONTENEDORES---*/
     .contenedor {
@@ -244,10 +291,8 @@ select {
         padding: 40px 10px 40px 10px;
         position: relative;
     }
-    #pagina{
-        display: none;
-    }
-    #registro{
+    .subContenedor #portadaIzq,
+    .subContenedor #portadaDer{
         display: none;
     }
 }

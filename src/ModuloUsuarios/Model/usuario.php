@@ -78,34 +78,28 @@
             return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         }
 
-        //Verificar usuario
-        public function verficarUsuario($correo, $contrasena){
-            $sql = ("SELECT id_usuario, nombre, id_rol, correo, contrasena, bloqueo_usuario FROM usuarios WHERE correo = ?");
+        //Obtener usuario por correo para el login
+        public function consultarUsuario($correo){
+            $sql = "SELECT u.id_usuario, u.nombre, u.contrasena, u.bloqueo_usuario, r.nombre AS rol
+                    FROM usuarios u
+                    INNER JOIN roles r ON r.id_rol = u.id_rol
+                    WHERE u.correo = ?";
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("s", $correo); 
-            
-            if($stmt->execute()){
-                $resultado = $stmt->get_result();
-                $usuario = $resultado->fetch_assoc();
+            $stmt->bind_param("s", $correo);
+            $stmt->execute();
+            return $stmt->get_result()->fetch_assoc() ?: null;
+        }
 
-                if(!$usuario){
-                    $stmt->close();
-                    return ['estado' => 1];
-                }
-
-                $bloqueo = $usuario['bloqueo_usuario'];
-                if($bloqueo){
-                    return ['estado' => 2];
-                }
-
-                $contrasenaSQL = $usuario['contrasena'];
-
-                if(!password_verify($contrasena, $contrasenaSQL)){
-                    return ['estado' => 3];
-                }
-
-                return ['estado' => 0, 'usuario' => $usuario];
-            }
+        //Usuario por id para la sesión
+        public function obtenerUsuarioPorId($id){
+            $sql = "SELECT u.id_usuario, u.nombre, u.correo, u.id_nivel, u.url_foto, r.nombre AS rol
+                    FROM usuarios u
+                    INNER JOIN roles r ON r.id_rol = u.id_rol
+                    WHERE u.id_usuario = ? AND u.bloqueo_usuario = 0";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            return $stmt->get_result()->fetch_assoc() ?: null;
         }
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -118,17 +112,24 @@
                 return $validacion;
             }
 
-            //Valores por defecto y cambio de valores
-            $rol = 1;
+            //El rol por defecto
+            $stmt = $this->conn->prepare("SELECT id_rol FROM roles WHERE nombre = 'ESTUDIANTE'");
+            $stmt->execute();
+            $fila = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if(!$fila){
+                return 3;
+            }
+            $rol = (int)$fila['id_rol'];
+
             $hash = password_hash($contrasena, PASSWORD_DEFAULT);
-            
-            $sql = "INSERT INTO usuarios 
-            (nombre, correo, contrasena, id_rol, fecha_registro, id_nivel) VALUES (?,?,?,?,?,?,?)";
+
+            $sql = "INSERT INTO usuarios
+            (nombre, correo, contrasena, id_rol, fecha_registro, id_nivel) VALUES (?,?,?,?,?,?)";
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("sssisis", $nombre, $correo, $hash, $rol, $fecha, $nivel);
+            $stmt->bind_param("sssisi", $nombre, $correo, $hash, $rol, $fecha, $nivel);
             $stmt->execute();
             return 0;
-            
         }
 
         //Validaciones para POST

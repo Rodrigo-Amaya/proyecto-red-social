@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../../css/auth.css">
+    <link rel="stylesheet" href="<?= $baseUrl ?>/public/css/auth.css">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-    <title>Registro</title>
+    <title>t'ASK | Iniciar sesión</title>
 </head>
 <body>
     <div class="contenedor">
@@ -13,7 +13,9 @@
         <div class="hojasFondo"></div>
         <div class="hojasFondo2"></div>
         <!--ELEMENTOS PRINCIPALES-->
-        <div class="subContenedor">
+        <div class="subContenedor modo-login" id="libro"
+             data-base="<?= htmlspecialchars($baseUrl) ?>"
+             data-volver="<?= htmlspecialchars($volver) ?>">
 
             <!--LOGIN-->
             <div class="contenedorElementos" id="login">
@@ -27,7 +29,7 @@
                     </div>
                     <br>
                     <!--contraseña-->
-                    <label for="contrasena">Contraseña:</label>
+                    <label for="contrasenaLogin">Contraseña:</label>
                     <div class="contenedorInputs">
                         <input type="password" name="contrasenaLogin" id="contrasenaLogin" class="inputContrasena" required><i class="bx bx-show" onclick="mostrarContrasena(this)"></i>
                     </div>
@@ -38,7 +40,19 @@
                     <h4 id="errorLogin"></h4>
 
                     <button type="submit" class="btnSubmit">Iniciar Sesión</button>
+                    <p class="cambioPanel">¿No tienes cuenta? <a href="#registro" id="registrarse">Regístrate</a></p>
                 </form>  
+            </div>
+
+            <!--PORTADAS -->
+            <div class="contenedorElementos portada" id="portadaIzq">
+                <h1 class="portadaTitulo">t'ASK</h1>
+                <p>Lo que sabes hacer puede ayudar a alguien.</p>
+            </div>
+
+            <div class="contenedorElementos portada" id="portadaDer">
+                <h1 class="portadaTitulo">t'ASK</h1>
+                <p>Lo que sabes hacer puede ayudar a alguien.</p>
             </div>
 
             <!--REGISTRO-->
@@ -73,29 +87,18 @@
 
                     <label for="nivelEstudio">Nivel de estudio:</label><br>
                     <select id="nivelEstudio" name="nivelEstudio" required>
-                        <option value="">Seleccione un nivel educativo <h1>▾</h1></option>
-                        <option value="1">Educacion Basica</option>
-                        <option value="2">Bachillerato General</option>
-                        <option value="3">Bachillerato Tecnico</option>
-                        <option value="4">Tecnico Superior</option>
-                        <option value="5">Educacion Universitaria</option>
-                        <option value="6">Egresado Universitario</option>
-                        <option value="7">Licenciatura</option>
-                        <option value="8">Ingenieria</option>
-                        <option value="9">Maestria</option>
-                        <option value="10">Doctorado</option>
-                        <option value="11">Postdoctorado</option>
-                        <option value="12">Profesional</option>
+                        <option value="">Seleccione un nivel educativo</option>
                     </select>
 
                     <h4 id="errorRegistro"></h4><br>
 
                     <button type="submit" class="btnSubmit">Registrarse</button>
+                    <p class="cambioPanel">¿Ya tienes cuenta? <a href="#login" id="iniciarSesion">Inicia sesión</a></p>
                 </form>
             </div>
         </div>
     </div>
-    <script src="../../js/auth.js"></script>
-    <script src="../../js/authPagPrincipal.js"></script>
+    <script src="<?= $baseUrl ?>/public/js/auth.js"></script>
+    <script src="<?= $baseUrl ?>/public/js/authPagPrincipal.js"></script>
 </body>
 </html>
