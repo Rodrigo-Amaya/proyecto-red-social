@@ -10,14 +10,6 @@
             <span>Inicio</span>
         </a>
 
-        <a href="index.php?page=explorar" class="<?= ($currentPage ?? '') === 'explorar' ? 'active' : '' ?>" aria-label="Explorar" title="Explorar">
-            <svg class="icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/>
-            </svg>
-            <span>Explorar tareas</span>
-        </a>
-
         <a href="index.php?page=mis-tareas" class="<?= ($currentPage ?? '') === 'mis-tareas' ? 'active' : '' ?>" aria-label="Mis tareas" title="Mis tareas">
             <svg class="icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/>

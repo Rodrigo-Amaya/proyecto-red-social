@@ -17,14 +17,19 @@ $publicaciones = $publicaciones ?? [];
                     <path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>
                 </svg>
             </button>
-            <a href="index.php?page=perfil" class="perfil-foto" aria-label="Mi perfil" title="Mi perfil">
-                <?php if (!empty($usuario['url_foto'])): ?>
-                    <img src="<?= htmlspecialchars($usuario['url_foto']) ?>"
-                        alt="Foto de <?= htmlspecialchars($usuario['nombre'] ?? 'usuario') ?>">
-                <?php else: ?>
-                    <span><?= htmlspecialchars(mb_strtoupper(mb_substr($usuario['nombre'] ?? 'U', 0, 1))) ?></span>
-                <?php endif; ?>
-            </a>
+            <?php if ($usuario): ?>
+                <button type="button" id="btn-cerrar-sesion" data-api="<?= htmlspecialchars($baseUrl) ?>/api">Cerrar sesión</button>
+                <a href="index.php?page=perfil" class="perfil-foto" aria-label="Mi perfil" title="Mi perfil">
+                    <?php if (!empty($usuario['url_foto'])): ?>
+                        <img src="<?= htmlspecialchars($usuario['url_foto']) ?>"
+                            alt="Foto de <?= htmlspecialchars($usuario['nombre'] ?? 'usuario') ?>">
+                    <?php else: ?>
+                        <span><?= htmlspecialchars(mb_strtoupper(mb_substr($usuario['nombre'] ?? 'U', 0, 1))) ?></span>
+                    <?php endif; ?>
+                </a>
+            <?php else: ?>
+                <a href="index.php?page=login&volver=inicio" class="btn-login">Iniciar sesión</a>
+            <?php endif; ?>
         </div>
     </header>
 
@@ -32,13 +37,23 @@ $publicaciones = $publicaciones ?? [];
         <div class="page-body">
             <!-- BIENVENIDA -->
             <section class="bienvenida">
-                <h1> Bienvenido/a, <?= htmlspecialchars($usuario['nombre'] ?? 'Usuario') ?>.</h1>
+                <?php if ($usuario): ?>
+                    <h1>Bienvenido/a, <?= htmlspecialchars($usuario['nombre']) ?>.</h1>
+                <?php else: ?>
+                    <h1>Bienvenido a t'ASK.</h1>
+                <?php endif; ?>
                 <p>Las pequeñas ayudas hacen una gran comunidad.</p>
             </section>
 
 
             <!-- CREAR PUBLICACIÓN -->
-            <section class="crear-publicacion">
+            <?php if (!$usuario): ?>
+            <section class="invitacion-login">
+                <p>Inicia sesión para publicar, responder y guardar tareas.</p>
+                <a href="index.php?page=login&volver=inicio" class="btn-login">Iniciar sesión</a>
+            </section>
+            <?php else: ?>
+            <section id="crear-publicacion">
 
                 <form action="/publicaciones/crear" method="POST">
                     <textarea name="mensaje" 
@@ -48,51 +63,40 @@ $publicaciones = $publicaciones ?? [];
                 </form>
 
             </section>
+            <?php endif; ?>
 
-            <!-- FILTROS -->
-            <nav class="filtro-materias">
-                <button class="active" data-materia="todas">Todas</button>
-                <?php foreach ($materias as $materia): ?>
-                    <button data-materia="<?= (int)$materia['id_materia'] ?>">
-                    <?= htmlspecialchars($materia['nombre']) ?>
-                    </button>
-                <?php endforeach; ?>
-            </nav>
+            <!-- FILTROS MATERIA: Carrusel -->
+            <div class="filtro-carrusel">
+                <button type="button" class="carrusel-flecha" id="filtro-anterior" aria-label="Materias anteriores" disabled>
+                    <svg class="icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+
+                <nav class="filtro-materias">
+                    <button type="button" class="active" data-materia="todas">Todas</button>
+                </nav>
+
+                <button type="button" class="carrusel-flecha" id="filtro-siguiente" aria-label="Materias siguientes">
+                    <svg class="icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+            </div>
 
 
             <!-- FEED -->
-            <section class="feed">
+            <section class="feed" id="feed"
+                     data-api="<?= htmlspecialchars($baseUrl) ?>/api"
+                     data-sesion="<?= $usuario ? '1' : '0' ?>"
+                     data-login="<?= htmlspecialchars($baseUrl) ?>/index.php?page=login&amp;volver=inicio">
+                <div class="feed-vacio" id="feed-vacio" hidden>
+                    <h2 id="feed-vacio-titulo"></h2>
+                    <p id="feed-vacio-texto"></p>
+                </div>
 
-                <?php if (empty($publicaciones)): ?>
+                <div class="feed-error" id="feed-error" hidden>
+                    <p></p>
+                    <button type="button">Reintentar</button>
+                </div>
 
-                    <div class="feed-vacio">
-                        <h2>¡Tu comunidad comienza aquí!</h2>
-                        <p>
-                            Aún no hay publicaciones. Sé la primera persona en compartir una pregunta o ayudar a alguien.
-                            Sé la primera persona en compartir una pregunta o ayudar a alguien.
-                        </p>
-                    </div>
-
-                <?php else: ?>
-                    <?php foreach ($publicaciones as $publicacion): ?>
-                        <article class="publicacion" data-materia="<?= (int)$publicacion['id_materia'] ?>">
-                            <header class="publicacion-autor">
-                                <?php if (!empty($publicacion['url_foto'])): ?>
-                                    <img src="<?= htmlspecialchars($publicacion['url_foto']) ?>"
-                                        alt="Foto de <?= htmlspecialchars($publicacion['autor'] ?? 'usuario') ?>">
-                                <?php endif; ?>
-
-                                <div class="publicacion-info">
-                                    <strong><?= htmlspecialchars($publicacion['autor'] ?? 'Usuario eliminado') ?></strong>
-                                    <small><?= htmlspecialchars($publicacion['materia'] ?? '') ?></small>
-                                </div>
-                            </header>
-
-                            <p class="publicacion-titulo"><?= htmlspecialchars($publicacion['titulo']) ?></p>
-                            <p><?= htmlspecialchars($publicacion['mensaje']) ?></p>
-                        </article>
-                    <?php endforeach; ?>
-                <?php endif; ?>
+                <div id="feed-centinela"></div>
 
             </section>
 

@@ -1,13 +1,13 @@
 :root {
     /* Colores */
-    --color-background: #ffffff;
-    --color-bg-secondary: #f7f6f2;
-    --color-border: #e5e5e0;
-    --color-bg-links: #e9efea;
-    --color-title: #344940;
-    --color-text: #53645b;
-    --color-subtext: #859087;
-    --color-button: #245e49;
+    --color-background:     #ffffff;
+    --color-bg-secondary:   #f7f6f2;
+    --color-border:         #e5e5e0;
+    --color-bg-links:       #e9efea;
+    --color-title:          #344940;
+    --color-text:           #53645b;
+    --color-subtext:        #859087;
+    --color-button:         #245e49;
 
     /* Tipografía */
     --font-family: Arial, sans-serif;

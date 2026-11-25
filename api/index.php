@@ -4,6 +4,10 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../app/helpers/utilidades.php';
 require_once __DIR__ . '/../app/contracts/Controlador.php';
 
+if (isset($_COOKIE[session_name()])) {
+    abrirSesion();
+}
+
 spl_autoload_register(function (string $clase) {
     // Módulos: src/<Modulo>/Controllers y src/<Modulo>/Models
     foreach (['Controller', 'Model'] as $carpeta) {
@@ -27,9 +31,11 @@ try {
     // Una línea por recurso; el controlador se crea solo si se pide
     $rutas = [
         'usuarios'  => fn() => new usuarioController(new usuario($conn)),
-        'publicacion' => fn() => new PublicacionController(new Publicacion($conn)),
+        'auth'  => fn() => new AuthController(new usuario($conn)),
+        'niveles'  => fn() => new NivelEstudioController(new NivelEstudio($conn)),
         'publicaciones'  => fn() => new PublicacionController(new Publicacion($conn)),
         'comentarios' => fn() => new comentarioController(new comentario($conn)),
+        'materias'  => fn() => new MateriaController(new Materia($conn)),
     ];
 
     $recurso = $partes[0] ?? '';
@@ -41,7 +47,7 @@ try {
 
     // Identificar si se solicitan comentarios de una publicación
     if (
-        $recurso === 'publicacion' &&
+        $recurso === 'publicaciones' &&
         ($partes[2] ?? null) === 'comentario'
     ) {
         $controlador = new comentarioController(
