@@ -46,7 +46,7 @@ formularioLogin.addEventListener('submit', async (e) => {
         }
 
         //Pasamos a la pagina de inicio
-        window.location.href = '../publicaciones/inicio.php';
+        window.location.href = '../usuarios/perfilUsuarios.php';
     }
     catch(error){
         console.error('Error al conectar con la API:', error);

@@ -29,14 +29,6 @@
                     return;
                 }
 
-                if($parte === "cambiarFoto"){
-                    match ($metodo){
-                        'POST'    => $this->cambiarFotoPerfil(),
-                        default  => noPermitido(),
-                    };
-                    return;
-                }
-
                 if($parte === "reseteoContrasena"){
                     match ($metodo){
                         'POST'    => $this->resetearContrasena(),
@@ -49,6 +41,13 @@
                 $idUsuario = validarId($parte, 'ID inválido');
 
                 if (isset($partes[2])) {
+                    if($partes[2] === "cambiarFoto"){
+                        match ($metodo){
+                            'POST'    => $this->cambiarFotoPerfil($idUsuario),
+                            default  => noPermitido(),
+                        };
+                        return;
+                    }
                     noEncontrado();
                 }
 
@@ -258,8 +257,7 @@
                 }
             }
 
-            function cambiarFotoPerfil(): void{
-                $usuario = $_POST["idUsuario"] ?? NULL;
+            function cambiarFotoPerfil(int $usuario): void{
                 $imagen = $_FILES["imagen"] ?? NULL;
 
                 //Si alguno de los campos ingresados esta vacio
@@ -304,31 +302,33 @@
             function actualizarusuario(int $id): void {
                 $datos = leerJson();
 
-                $nombre = $datos['nombre'] ?? '';
-                $correo = $datos['correo'] ?? '';
-                $contrasenaAnterior = $datos['contrasenaAnterior'] ?? '';
-                $contrasenaNueva = $datos["contrasenaNueva"] ?? '';
-                $contrasenaNuevaValidar = $datos["contrasenaNuevaValidar"] ?? '';
-                $nivel = $datos["nivelEstudio"] ?? '';
+                $nombre = $datos['nombre'] ?? null;
+                $correo = $datos['correo'] ?? null;
+                $contrasenaAnterior = $datos['contrasenaAnterior'] ?? null;
+                $contrasenaNueva = $datos["contrasenaNueva"] ?? null;
+                $contrasenaNuevaValidar = $datos["contrasenaNuevaValidar"] ?? null;
+                $nivel = $datos["nivelEstudio"] ?? null;
 
                 //Validaciones de campos
-                validarCamposVacios([$nombre]);
-                validarCamposVacios([$correo]);
-                validarCamposVacios([$contrasenaAnterior]);
-                validarCamposVacios([$contrasenaNueva]);
-                validarCamposVacios([$contrasenaNuevaValidar]);
-                validarCampoEntero($nivel);
+                validarCamposVacios([$nombre, $correo, $contrasenaAnterior, $contrasenaNueva, $contrasenaNuevaValidar, $nivel]);
 
-                validarContrasena($contrasenaNueva);
+                if($contrasenaAnterior && !$contrasenaNueva){
+                    respuesta(400, ['success' => false, 'Mensaje' => 'Ingrese la nueva contraseña']);
+                }
 
                 //si las contraseñas no coinciden
-                if($contrasenaNueva !== $contrasenaNuevaValidar){
-                    respuesta(400, ['success' => false, 'Mensaje' => 'Nuevas contraseñas no coinciden']);
+                if($contrasenaNueva){
+                    validarContrasena($contrasenaNueva);
+                    if($contrasenaNueva !== $contrasenaNuevaValidar){
+                        respuesta(400, ['success' => false, 'Mensaje' => 'Nuevas contraseñas no coinciden']);
+                    }
                 }
 
                 //Si correo no tiene el formato correcto
-                if(!filter_var($correo, FILTER_VALIDATE_EMAIL)){
-                    respuesta(400, ['success' => false, 'Mensaje' => 'Formato de correo incorrecto']);
+                if($correo){
+                    if(!filter_var($correo, FILTER_VALIDATE_EMAIL)){
+                        respuesta(400, ['success' => false, 'Mensaje' => 'Formato de correo incorrecto']);
+                    }
                 }
 
                 $resultado = $this->modelo->actualizarUsuario(
@@ -343,19 +343,19 @@
                 //Resultado recibido
                 switch($resultado){
                     case 1:
-                        respuesta(404, ['success' => false, 'Mensaje:' => 'Usuario no encontrado o bloqueado']);
+                        respuesta(404, ['success' => false, 'Mensaje' => 'Usuario no encontrado o bloqueado']);
                         break;
                     case 2:
-                        respuesta(404, ['success' => false, 'Mensaje:' => 'Contraseña incorrecta']);
+                        respuesta(404, ['success' => false, 'Mensaje' => 'Contraseña incorrecta']);
                         break;
                     case 3:
-                        respuesta(404, ['success' => false, 'Mensaje:' => 'Correo ya registrado por otro usuario']);
+                        respuesta(404, ['success' => false, 'Mensaje' => 'Correo ya registrado por otro usuario']);
                         break;
                     case 4:
-                        respuesta(404, ['success' => false, 'Mensaje:' => 'Nivel de estudio inválido']);
+                        respuesta(404, ['success' => false, 'Mensaje' => 'Nivel de estudio inválido']);
                         break;
                     default:
-                        respuesta(200, ['success' => true, 'Mensaje:' => 'Usuario actualizado correctamente']);
+                        respuesta(200, ['success' => true, 'Mensaje' => 'Su información se actualizó correctamente']);
                 }
             }
 
