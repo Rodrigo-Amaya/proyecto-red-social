@@ -17,7 +17,7 @@
 
         //---Busqueda por ID---
         public function buscarPorID($id){
-            $sql = ("SELECT u.nombre, u.correo, r.nombre AS rol, u.fecha_registro, n.nombre AS nivel, url_foto  FROM usuarios u
+            $sql = ("SELECT u.nombre, u.correo, u.id_rol, r.nombre AS rol, u.fecha_registro, n.nombre AS nivel, url_foto  FROM usuarios u
             JOIN  nivel_estudio n
             ON u.id_nivel = n.id_nivel
             JOIN roles r

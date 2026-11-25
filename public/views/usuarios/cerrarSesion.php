@@ -8,5 +8,5 @@ $_SESSION = [];
 session_destroy();
 
 // Redirigir al inicio de sesión
-header("Location: index.php");
+header("Location: perfilUsuarios.php");
 exit;

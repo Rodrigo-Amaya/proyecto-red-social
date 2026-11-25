@@ -158,3 +158,30 @@ h2{
     padding: 5px 15px 5px 15px;
     border-radius: 1rem;
 }
+
+/*-----------------------------------------------------------
+                    PROFESOR Y ADMINISTRADOR
+-----------------------------------------------------------*/
+#datosProfesor {
+    margin-top: 20px;
+    text-align: center;
+}
+#datosProfesor p {
+    margin: 0 0 12px 0;
+}
+#datosProfesor span {
+    display: block;
+    font-size: 13px;
+    opacity: 0.75;
+}
+
+.contenedorBoton {
+    width: 90%;
+}
+#botonSolicitudes {
+    background-color: var(--color-primario);
+    color: var(--texto-blanco);
+}
+#botonSolicitudes:hover {
+    background-color: var(--color-hover);
+}

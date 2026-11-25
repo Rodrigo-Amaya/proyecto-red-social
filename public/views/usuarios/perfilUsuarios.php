@@ -18,6 +18,29 @@ session_start();
     }
 
     $usuario = $datos['Usuarios'];
+
+    //Ajusta estos IDs a los de tu tabla `roles` (los mismos de Profesor::ROL_PROFESOR y ROL_ADMIN)
+    const ROL_PROFESOR = 2;
+    const ROL_ADMIN = 3;
+
+    //El rol de la base de datos es el que manda (la sesion puede estar desactualizada si lo acaban de aprobar)
+    $idRol = (int)($usuario['id_rol'] ?? $_SESSION['id_rol'] ?? 0);
+    $_SESSION['id_rol'] = $idRol;
+
+    $esProfesor = $idRol === ROL_PROFESOR;
+    $esAdmin = $idRol === ROL_ADMIN;
+
+    //Si es profesor, buscamos la universidad y la carrera de su solicitud aprobada
+    $aplicacion = null;
+    if ($esProfesor) {
+        $urlAplicacion = "http://localhost/proyecto-red-social/api/profesores?usuario=$id_usuario&estado=APROBADA&orden=DESC";
+        $respuestaAplicacion = @file_get_contents($urlAplicacion);
+        $datosAplicacion = $respuestaAplicacion ? json_decode($respuestaAplicacion, true) : null;
+
+        if ($datosAplicacion && !empty($datosAplicacion['success']) && is_array($datosAplicacion['Aplicaciones'])) {
+            $aplicacion = $datosAplicacion['Aplicaciones'][0] ?? null;
+        }
+    }
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -37,11 +60,24 @@ session_start();
             <h2><?= htmlspecialchars($usuario['nombre']) ?></h2>
             <p><?= htmlspecialchars($usuario['nivel']) ?></p>
             <p id="rol"><?= htmlspecialchars($usuario['rol']) ?></p>
+            <?php if ($esProfesor && $aplicacion): ?>
+                <div id="datosProfesor">
+                    <p><span>Universidad</span><?= htmlspecialchars($aplicacion['universidad']) ?></p>
+                    <p><span>Carrera</span><?= htmlspecialchars($aplicacion['carrera']) ?></p>
+                </div>
+            <?php endif; ?>
         </div>
+        <?php if ($esAdmin): ?>
+            <div class="contenedorBoton">
+                <button type="button" id="botonSolicitudes" onclick="irASolicitudes()">Solicitudes</button>
+            </div>
+        <?php endif; ?>
         <form action="cerrarSesion.php" method="POST">
             <button type="submit" id="cerrarSesion">Cerrar sesión</button>
         </form>
-        <p onclick="quieroSerProfesor()">Quiero ser un profesor</p>
+        <?php if (!$esProfesor && !$esAdmin): ?>
+            <p onclick="quieroSerProfesor()">Quiero ser un profesor</p>
+        <?php endif; ?>
     </div>
             
 
