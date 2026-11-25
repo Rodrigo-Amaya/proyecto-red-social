@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 14-11-2026 a las 23:03:49
+-- Tiempo de generación: 24-11-2026 a las 06:38:19
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -38,7 +38,7 @@ CREATE TABLE `aplicacion_profesor` (
   `url_titulo` varchar(500) NOT NULL,
   `estado` varchar(30) NOT NULL DEFAULT 'PENDIENTE',
   `fecha_aplicacion` datetime NOT NULL DEFAULT current_timestamp(),
-  `primera_revision_fecha` datetime NOT NULL,
+  `primera_revision_fecha` datetime NULL,
   `segunda_revision_fecha` datetime DEFAULT NULL,
   `razon_rechazo` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -86,7 +86,7 @@ CREATE TABLE `comentarios` (
   `mensaje` text NOT NULL,
   `id_usuario` int(11) NOT NULL,
   `id_publicacion` int(11) NOT NULL,
-  `id_comentario_padre` int(11) NOT NULL,
+  `id_comentario_padre` int(11) NULL,
   `bloquear` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -163,7 +163,7 @@ CREATE TABLE `publicaciones` (
   `puntos` int(11) NOT NULL DEFAULT 0,
   `id_usuario` int(11) NOT NULL,
   `id_materia` int(11) NOT NULL,
-  `estado` varchar(20) NOT NULL DEFAULT 'SINRESOLVER',
+  `estado` enum('SINRESOLVER', 'RESUELTA') NOT NULL DEFAULT 'SINRESOLVER',
   `bloquear` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -189,7 +189,7 @@ CREATE TABLE `revision_aplicacion_profesor` (
   `id_revision` int(11) NOT NULL,
   `id_aplicacion` int(11) NOT NULL,
   `id_administrador` int(11) NOT NULL,
-  `estapa_revision` tinyint(4) NOT NULL,
+  `etapa_revision` tinyint(4) NOT NULL,
   `decision` varchar(20) NOT NULL,
   `comentario` text DEFAULT NULL,
   `fecha` datetime NOT NULL DEFAULT current_timestamp()
@@ -235,7 +235,7 @@ CREATE TABLE `usuarios` (
   `fecha_registro` datetime NOT NULL DEFAULT current_timestamp(),
   `puntos` int(11) NOT NULL DEFAULT 0,
   `id_nivel` int(11) NOT NULL,
-  `url_foto` varchar(500) NOT NULL,
+  `url_foto` varchar(500) NULL,
   `bloqueo_usuario` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -271,7 +271,7 @@ ALTER TABLE `comentarios`
   ADD PRIMARY KEY (`id_comentario`),
   ADD KEY `comentario_usuario_fk` (`id_usuario`),
   ADD KEY `comentario_publicacion_fk` (`id_publicacion`),
-  ADD KEY `comentario_comentario_fk` (`id_comentario_padre`);
+  ADD KEY `comentario_comentario_fk` (`id_comentario_padre`) USING BTREE;
 
 --
 -- Indices de la tabla `likes_comentario`

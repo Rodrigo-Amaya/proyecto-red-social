@@ -27,21 +27,38 @@ try {
     // Una línea por recurso; el controlador se crea solo si se pide
     $rutas = [
         'usuarios'  => fn() => new usuarioController(new usuario($conn)),
+        'publicacion' => fn() => new PublicacionController(new Publicacion($conn)),
         'publicaciones'  => fn() => new PublicacionController(new Publicacion($conn)),
         'profesores'  => fn() => new profesoresController(new profesor($conn)),
+        'comentarios' => fn() => new comentarioController(new comentario($conn)),
     ];
 
     $recurso = $partes[0] ?? '';
+
     if (!isset($rutas[$recurso])) {
         noEncontrado();
+        return;
     }
 
-    $rutas[$recurso]()->control($metodo, $partes);
+    // Identificar si se solicitan comentarios de una publicación
+    if (
+        $recurso === 'publicacion' &&
+        ($partes[2] ?? null) === 'comentario'
+    ) {
+        $controlador = new comentarioController(
+            new comentario($conn)
+        );
+    } else {
+        $controlador = $rutas[$recurso]();
+    }
+
+    $controlador->control($metodo, $partes);
 
 } catch (mysqli_sql_exception $e) {
     error_log($e->getMessage());
     if ($e->getCode() === 1062) {
         respuesta(409, ['success' => false, 'mensaje' => 'Registro duplicado']);
+        return;
     }
     respuesta(500, ['success' => false, 'mensaje' => 'Error interno del servidor']);
 } catch (Throwable $e) {
