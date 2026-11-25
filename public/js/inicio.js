@@ -4,7 +4,7 @@ if (feed) {
     iniciarFeed(feed);
 }
 
-function iniciarFeed(feed) {
+async function iniciarFeed(feed) {
     const api = feed.dataset.api;
     const nav = document.querySelector('.filtro-materias');
     const vacio = document.getElementById('feed-vacio');
@@ -17,12 +17,99 @@ function iniciarFeed(feed) {
 
     const haySesion = feed.dataset.sesion === '1';
     const urlLogin = feed.dataset.login;
+    const idUsuario = Number(feed.dataset.usuario);
+    const publicacionesGuardadas = new Set();
 
     // Carrusel de materias
     const flechaAnterior = document.getElementById('filtro-anterior');
     const flechaSiguiente = document.getElementById('filtro-siguiente');
 
     const ICONO_GUARDAR = '<svg class="icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
+
+    function actualizarIconoGuardar(boton, guardada) {
+        boton.classList.toggle('guardada', guardada);
+        boton.setAttribute('aria-pressed', String(guardada));
+        boton.title = guardada ? 'Quitar de guardados' : 'Guardar publicación';
+
+        const svg = boton.querySelector('svg');
+        if (svg) {
+            svg.setAttribute('fill', guardada ? 'currentColor' : 'none');
+        }
+    }
+
+    // Consultar cuáles publicaciones ya están guardadas
+    async function cargarPublicacionesGuardadas() {
+        if (!haySesion) return;
+
+        try {
+            const respuesta = await fetch(
+                `${api}/publicaciones/guardadas?id_usuario=${idUsuario}`
+            );
+
+            const datos = await respuesta.json();
+
+            if (!respuesta.ok || !datos.success) {
+                throw new Error(datos.mensaje || 'No se pudieron consultar los guardados');
+            }
+
+            datos.publicaciones.forEach(p => {
+                publicacionesGuardadas.add(Number(p.id_publicacion));
+            });
+
+            feed.querySelectorAll('.publicacion').forEach(tarjeta => {
+                const boton = tarjeta.querySelector('.btn-guardar');
+                if (boton) {
+                    actualizarIconoGuardar(
+                        boton,
+                        publicacionesGuardadas.has(Number(tarjeta.dataset.id))
+                    );
+                }
+            });
+        } catch (error) {
+            console.error(error.message);
+        }
+    }
+
+    // Guardar o quitar una publicación
+    async function cambiarGuardado(boton, idPublicacion) {
+        const yaGuardada = publicacionesGuardadas.has(idPublicacion);
+
+        boton.disabled = true;
+
+        try {
+            const respuesta = await fetch(
+                `${api}/publicaciones/${idPublicacion}/guardar`,
+                {
+                    method: yaGuardada ? 'DELETE' : 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        id_usuario: idUsuario
+                    })
+                }
+            );
+
+            const datos = await respuesta.json();
+
+            if (!respuesta.ok || !datos.success) {
+                throw new Error(datos.mensaje || 'No se pudo actualizar el guardado');
+            }
+
+            if (yaGuardada) {
+                publicacionesGuardadas.delete(idPublicacion);
+            } else {
+                publicacionesGuardadas.add(idPublicacion);
+            }
+
+            actualizarIconoGuardar(boton, !yaGuardada);
+
+        } catch (error) {
+            alert(error.message);
+        } finally {
+            boton.disabled = false;
+        }
+    }
 
     function actualizarFlechas() {
         const maximo = nav.scrollWidth - nav.clientWidth;
@@ -90,6 +177,15 @@ function iniciarFeed(feed) {
         guardar.title = 'Guardar publicación';
         guardar.setAttribute('aria-label', 'Guardar publicación');
         guardar.innerHTML = ICONO_GUARDAR; // constante propia, sin datos del servidor
+
+        const estaGuardada = publicacionesGuardadas.has(Number(p.id_publicacion));
+        actualizarIconoGuardar(guardar, estaGuardada);
+
+        if (haySesion) {
+            guardar.addEventListener('click', () => {
+                cambiarGuardado(guardar, Number(p.id_publicacion));
+            });
+        }
 
         if (!haySesion) {
             responder.addEventListener('click', () => { window.location.href = urlLogin; });
@@ -212,6 +308,11 @@ function iniciarFeed(feed) {
     }
 
     cargarMaterias();
+
+    if (haySesion) {
+        await cargarPublicacionesGuardadas();
+    }
+
     cargarMas();
     observador.observe(centinela);
 }

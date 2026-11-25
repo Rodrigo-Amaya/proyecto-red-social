@@ -85,6 +85,7 @@ $publicaciones = $publicaciones ?? [];
             <section class="feed" id="feed"
                      data-api="<?= htmlspecialchars($baseUrl) ?>/api"
                      data-sesion="<?= $usuario ? '1' : '0' ?>"
+                     data-usuario="<?= htmlspecialchars((string)($usuario['id_usuario'] ?? '')) ?>"
                      data-login="<?= htmlspecialchars($baseUrl) ?>/index.php?page=login&amp;volver=inicio">
                 <div class="feed-vacio" id="feed-vacio" hidden>
                     <h2 id="feed-vacio-titulo"></h2>
