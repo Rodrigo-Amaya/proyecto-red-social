@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 14-11-2026 a las 23:03:49
+-- Tiempo de generación: 24-11-2026 a las 06:38:19
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -271,7 +271,7 @@ ALTER TABLE `comentarios`
   ADD PRIMARY KEY (`id_comentario`),
   ADD KEY `comentario_usuario_fk` (`id_usuario`),
   ADD KEY `comentario_publicacion_fk` (`id_publicacion`),
-  ADD KEY `comentario_comentario_fk` (`id_comentario_padre`);
+  ADD KEY `comentario_comentario_fk` (`id_comentario_padre`) USING BTREE;
 
 --
 -- Indices de la tabla `likes_comentario`
