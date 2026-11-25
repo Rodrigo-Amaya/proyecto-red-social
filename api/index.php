@@ -28,6 +28,7 @@ try {
     $rutas = [
         'usuarios'  => fn() => new usuarioController(new usuario($conn)),
         'publicaciones'  => fn() => new PublicacionController(new Publicacion($conn)),
+        'profesores'  => fn() => new profesoresController(new profesor($conn)),
     ];
 
     $recurso = $partes[0] ?? '';

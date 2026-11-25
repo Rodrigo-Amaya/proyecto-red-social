@@ -7,6 +7,10 @@ function cerrarPanelFoto(){
     document.getElementById("opacidad").style.display = "none";
 }
 
+function quieroSerProfesor(){
+    window.location.href = '../profesores/aplicacionProfesor.php';
+}
+
 /*-----------------------------------------------------------------------------------------
                                 FORMULARIO DE ACTUALIZACIÓN
 -----------------------------------------------------------------------------------------*/
