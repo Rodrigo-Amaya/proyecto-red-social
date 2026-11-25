@@ -52,6 +52,7 @@ function validarCampoEntero($campo): int
 
     return $valor;
 }
+
 function validarCamposVacios($campos = []){
     $vacio = true;
     foreach($campos as $campo){
@@ -60,14 +61,14 @@ function validarCamposVacios($campos = []){
         }
     }
     if($vacio){
-        respuesta(400, ['success' => false, 'Mensaje:' => 'Campo vacio']);
+        respuesta(400, ['success' => false, 'mensaje' => 'Campo vacio']);
     }
 }
 
 function validarFecha($fecha){
     $fechaValidada = DateTime::createFromFormat('!Y-m-d', $fecha);
     if (!$fechaValidada || $fechaValidada->format('Y-m-d') !== $fecha || $fechaValidada > new DateTime('today')){
-        respuesta(400, ['success' => false, 'Mensaje:' => 'Tipo de fecha ingresada no es valida']);
+        respuesta(400, ['success' => false, 'mensaje' => 'Tipo de fecha ingresada no es valida']);
     }
 }
 
@@ -78,23 +79,24 @@ function validarContrasena(string $contrasena) {
     $patronNum = '/^(?=.*[0-9]).+$/';
 
     if(mb_strlen($contrasena) < 8){
-        respuesta(400, ['success' => false, 'Mensaje' => 'La contraseña debe ser de mas de 8 caracteres']);
+        respuesta(400, ['success' => false, 'mensaje' => 'La contraseña debe tener al menos 8 caracteres']);
     }
 
     if(preg_match($patronMayus, $contrasena) === 0){
-        respuesta(400, ['success' => false, 'Mensaje:' => 'La contraseña debe tener al menos una letra en mayuscula']);
+        respuesta(400, ['success' => false, 'mensaje' => 'La contraseña debe tener al menos una letra en mayuscula']);
     }
     if(preg_match($patronEspecial, $contrasena) === 0){
-        respuesta(400, ['success' => false, 'Mensaje:' => 'La contraseña debe tener al menos un caracter especial']);
+        respuesta(400, ['success' => false, 'mensaje' => 'La contraseña debe tener al menos un caracter especial']);
     }
     if(preg_match($patronNum, $contrasena) === 0){
-        respuesta(400, ['success' => false, 'Mensaje:' => 'La contraseña debe tener al menos un numero']);
+        respuesta(400, ['success' => false, 'mensaje' => 'La contraseña debe tener al menos un numero']);
     }
 }
 
+
 function validarTrueOFalse(int $valor){
-    if($valor != true && $valor != false && $valor != 1 && $valor != 0){
-        respuesta(400, ['success' => false, 'Mensaje:' => 'Valor invalido de campo de verdadero o falso']);
+    if($valor !== 0 && $valor !== 1){
+        respuesta(400, ['success' => false, 'mensaje' => 'Valor invalido de campo de verdadero o falso']);
     }
 }
 
@@ -140,4 +142,73 @@ function validarDocumento($archivo) {
     $tipo = finfo_file($finfo, $archivo['tmp_name']);
 
     return $tiposPermitidos[$tipo] ?? false;
+}
+
+//========== SESION ==========
+
+function abrirSesion(): void
+{
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        return;
+    }
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path'     => '/',
+        'secure'   => !empty($_SERVER['HTTPS']),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
+
+/**
+ * Obtener el id del usuario autenticado
+ * @return int ID usuario, respuesta 401 si no hay sesión
+ */
+function usuarioActual(): int
+{
+    if (!isset($_SESSION['id_usuario'])) {
+        respuesta(401, ['success' => false, 'mensaje' => 'No autenticado']);
+    }
+    return (int)$_SESSION['id_usuario'];
+}
+
+/**
+ * Validar que el usuario tenga el rol requerido
+ * @param array $roles Nombres de roles permitidos
+ * @return void Respuestas: 401 sin sesión|403 si el rol no está permitido
+ */
+function requerirRol(array $roles): void
+{
+    usuarioActual();
+    if (!in_array($_SESSION['rol'] ?? '', $roles, true)) {
+        respuesta(403, ['success' => false, 'mensaje' => 'No tiene permiso para esta acción']);
+    }
+}
+
+/**
+ * Validar todos los campos obligatorios
+ * @return void Devuelve respuesta HTTP si hay campos invalidos
+ */
+function validarCamposRequeridos(array $data, array $requeridos) : void
+{
+    $invalidos = [];
+
+    foreach ($requeridos as $campo) {
+        if (
+            !isset($data[$campo]) ||
+            !is_scalar($data[$campo]) ||
+            trim((string)$data[$campo]) === ''
+        ) {
+            $invalidos[] = $campo;
+        }
+    }
+
+    if (!empty($invalidos)) {
+        respuesta(400, [
+            'success' => false,
+            'mensaje' => 'Campos inválidos o vacíos',
+            'campos' => $invalidos
+        ]);
+    }
 }

@@ -15,6 +15,18 @@
                     $metodo = 'PUT';
                 }
 
+                // url: publicaciones/feed
+                if ($id === 'feed') {
+                    if (isset($partes[2])) {
+                        noEncontrado();
+                    }
+                    if ($metodo !== 'GET') {
+                        noPermitido();
+                    }
+                    $this->obtenerFeed();
+                    return;
+                }
+
                 // url: /publicacion
                 if ($id === null) {
                     match ($metodo) {
@@ -43,6 +55,38 @@
 
             //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             //========== GET ==========
+            // Feed paginado (Limite 50, por defecto 15)
+            function obtenerFeed(): void {
+                $limite = 15;
+                if (isset($_GET['limite']) && $_GET['limite'] !== '') {
+                    $limite = filter_var($_GET['limite'], FILTER_VALIDATE_INT);
+                    if ($limite === false || $limite < 1 || $limite > 50) {
+                        respuesta(400, ['success' => false, 'mensaje' => 'El límite debe ser un número entre 1 y 50']);
+                    }
+                }
+
+                $antesDe = null;
+                if (isset($_GET['antes_de']) && $_GET['antes_de'] !== '') {
+                    $antesDe = validarCampoEntero($_GET['antes_de']);
+                }
+
+                $materia = null;
+                if (isset($_GET['materia']) && $_GET['materia'] !== '') {
+                    $materia = validarCampoEntero($_GET['materia']);
+                }
+
+                $feed = $this->modelo->feed($limite, $antesDe, $materia);
+                $publicaciones = $feed['publicaciones'];
+                $ultima = end($publicaciones);
+
+                respuesta(200, [
+                    'success' => true,
+                    'mensaje' => 'Feed obtenido correctamente',
+                    'publicaciones' => $publicaciones,
+                    'hay_mas' => $feed['hay_mas'],
+                    'siguiente_cursor' => $ultima ? (int)$ultima['id_publicacion'] : null
+                ]);
+            }
 
             //busqueda de publicacion por id
             function obtenerPublicacion(int $id): void{
@@ -50,12 +94,13 @@
 
                 //Sino hay resultado
                 if (!$resultado) {
-                    respuesta(404, ['success' => false,'mensaje' => 'Publicacion no encontrado o bloqueada']);
+                    respuesta(404, ['success' => false,'mensaje' => 'Publicacion no encontrada o bloqueada']); // CORREGIDO: concordancia
                 }
 
                 respuesta(200, [
                     'success' => true,
-                    'Usuarios' => $resultado
+                    'mensaje' => 'Publicación obtenida correctamente',
+                    'publicacion' => $resultado
                 ]);
             }
 
@@ -93,23 +138,22 @@
                     //Validar estado sea uno correcto
                     if($estado){
                         if($estado !== 'SINRESOLVER' && $estado !== 'RESUELTA'){
-                            respuesta(400, ['success' => false, 'Mensaje' => 'Tipo de estado invalido']);
-                            exit;
+                            respuesta(400, ['success' => false, 'mensaje' => 'Tipo de estado invalido']); // CORREGIDO: clave
                         }
                     }
 
                     //Validamos el orden
                     if($orden){
                         if($orden !== 'ASC' && $orden !== 'DESC'){
-                            respuesta(400, ['success' => false, 'Mensaje' => 'Tipo de orden inválido']);
-                            exit;
+                            respuesta(400, ['success' => false, 'mensaje' => 'Tipo de orden inválido']); // CORREGIDO: clave
                         }
                     }
 
-                    //Validamos si se pide un valor correcto para bloqueado
+                    //Validar permisos de admin para ver ocultos
                     if($bloqueado){
                         validarCampoEntero($bloqueado);
                         validarTrueOFalse($bloqueado);
+                        respuesta(403, ['success' => false, 'mensaje' => 'No tienes permiso para ver publicaciones bloqueadas']); // NUEVO
                     }
 
                     $resultado = $this->modelo->buscarPorFiltros(
@@ -127,13 +171,11 @@
                     $resultado = $this->modelo->todasPublicaciones();
                 }
                 
-                //Mensaje recibido
-                if($resultado){
-                    respuesta(200, ['success' => true, 'Publicaciones' => $resultado]);
-                }
-                else{
-                    respuesta(200, ['success' => true, 'Publicaciones' => '']);
-                }
+                respuesta(200, [
+                    'success' => true,
+                    'mensaje' => 'Publicaciones obtenidas correctamente',
+                    'publicaciones' => $resultado ?: []
+                ]);
             }
 
             //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -151,17 +193,17 @@
 
                 //Si alguno de los campos ingresados esta vacio
                 if ( $titulo === '' || $mensaje === '' || $usuario === '' || $materia === '') {
-                    respuesta(400, ['success' => false, 'Mensaje' => 'Todos los campos son abligatorios']);
+                    respuesta(400, ['success' => false, 'mensaje' => 'Todos los campos son abligatorios']);
                 }
 
                 //Que el titulo no se amayor a 100 caracteres
                 if(str_word_count($titulo) > 100){
-                    respuesta(400, ['success' => false, 'Mensaje' => 'Titulo muy largo']);
+                    respuesta(400, ['success' => false, 'mensaje' => 'Titulo muy largo']);
                 }
 
                 //Que el mensaje no se amayor a 500 caracteres
                 if(str_word_count($mensaje) > 500){
-                    respuesta(400, ['success' => false, 'Mensaje' => 'Mensaje muy largo']);
+                    respuesta(400, ['success' => false, 'mensaje' => 'Mensaje muy largo']);
                 }
 
                 //Que el usuario no sea texto
@@ -181,7 +223,7 @@
                     $extension = validarDocumento($archivo);
 
                     if($extension === false){
-                        respuesta(400, ['success' => false, 'Mensaje' => 'Tipo de archivo no es valido o esta corrupto']);
+                        respuesta(400, ['success' => false, 'mensaje' => 'Tipo de archivo no es valido o esta corrupto']);
                     }
 
                     $extensiones[] = $extension;
@@ -200,16 +242,16 @@
 
                 //Respuesta obtenida
                 if($resultado === 1){
-                    respuesta(409, ['success' => false, 'Mensaje' => 'Usuario no encontrado o bloqueado']);
+                    respuesta(409, ['success' => false, 'mensaje' => 'Usuario no encontrado o bloqueado']);
                 }
                 else if($resultado === 2){
-                    respuesta(400, ['success' => false, 'Mensaje' => 'Materia no encontrada']);
+                    respuesta(400, ['success' => false, 'mensaje' => 'Materia no encontrada']);
                 }
                 else if ($resultado === 3) {
-                    respuesta(500, ['success' => false, 'Mensaje' => 'Error al guardar los documentos']);
+                    respuesta(500, ['success' => false, 'mensaje' => 'Error al guardar los documentos']);
                 }
                 else{
-                    respuesta(201, ['success' => true, 'Mensaje' => 'Se realizo la publicacion con exito']);
+                    respuesta(201, ['success' => true, 'mensaje' => 'Se realizo la publicacion con exito']);
                 }
             }
 
@@ -223,15 +265,15 @@
                 
                 //Si alguno de los campos ingresados esta vacio
                 if ( $titulo === '' || $mensaje === '' || $materia === '') {
-                    respuesta(400, ['success' => false, 'Mensaje' => 'Titulo, mensaje y materia son obligatorios']);
+                    respuesta(400, ['success' => false, 'mensaje' => 'Titulo, mensaje y materia son obligatorios']);
                 }
 
                 if (str_word_count($titulo) > 100) {
-                    respuesta(400, ['success' => false, 'Mensaje' => 'Titulo muy largo']);
+                    respuesta(400, ['success' => false, 'mensaje' => 'Titulo muy largo']);
                 }
 
                 if (str_word_count($mensaje) > 500) {
-                    respuesta(400, ['success' => false, 'Mensaje' => 'Mensaje muy largo']);
+                    respuesta(400, ['success' => false, 'mensaje' => 'Mensaje muy largo']);
                 }
 
                 validarCampoEntero($materia);
@@ -245,7 +287,7 @@
                     // Se subió un archivo en esta posición: se valida ANTES de tocar nada
                     if ($archivo !== null && $archivo['error'] !== UPLOAD_ERR_NO_FILE) {
                         if (validarDocumento($archivo) === false) {
-                            respuesta(400, ['success' => false, 'Mensaje' => "El archivo_$n no es valido o esta corrupto"]);
+                            respuesta(400, ['success' => false, 'mensaje' => "El archivo_$n no es valido o esta corrupto"]);
                         }
                         $archivosNuevos[$n] = $archivo;
                     }
@@ -266,19 +308,19 @@
 
                 switch ($resultado) {
                     case 1:
-                        respuesta(404, ['success' => false, 'Mensaje' => 'Publicación no encontrada o bloqueada']);
+                        respuesta(404, ['success' => false, 'mensaje' => 'Publicación no encontrada o bloqueada']);
                         break;
                     case 2:
-                        respuesta(400, ['success' => false, 'Mensaje' => 'No se encontro la materia']);
+                        respuesta(400, ['success' => false, 'mensaje' => 'No se encontro la materia']);
                         break;
                     case 3:
-                        respuesta(403, ['success' => false, 'Mensaje' => 'Ya no se puede modificar la publicación']);
+                        respuesta(403, ['success' => false, 'mensaje' => 'Ya no se puede modificar la publicación']);
                         break;
                     case 4:
-                        respuesta(500, ['success' => false, 'Mensaje' => 'Error al guardar los cambios o los documentos']);
+                        respuesta(500, ['success' => false, 'mensaje' => 'Error al guardar los cambios o los documentos']);
                         break;
                     default:
-                        respuesta(200, ['success' => true, 'Mensaje' => 'Publicación actualizada correctamente']);
+                        respuesta(200, ['success' => true, 'mensaje' => 'Publicación actualizada correctamente']);
                 }
             }
 
@@ -291,11 +333,11 @@
 
                 //Resultado recibido
                 if($resultado === false){
-                    respuesta(404, ['success' => false,'Mensaje' => 'La publicación no fue encontrada o se encuentra bloqueada'
+                    respuesta(404, ['success' => false,'mensaje' => 'La publicación no fue encontrada o se encuentra bloqueada'
                     ]);
                 }
                 else{
-                    respuesta(200, ['success' => true, 'Mensaje:' => 'Publicación eliminada correctamente']);
+                    respuesta(200, ['success' => true, 'mensaje' => 'Publicación eliminada correctamente']);
                 }
             }
 
@@ -310,8 +352,7 @@
                 validarCamposVacios([$estado]);
                 
                 if($estado !== 'SINRESOLVER' && $estado !== 'RESUELTA'){
-                    respuesta(400, ['success' => false, 'Mensaje' => 'Tipo de estado inválido']);
-                    exit;
+                    respuesta(400, ['success' => false, 'mensaje' => 'Tipo de estado inválido']);
                 }
 
                 $resultado = $this->modelo->cambiarEstadoPublicacion(
@@ -321,11 +362,11 @@
 
                 //Resultado recibido
                 if($resultado === false){
-                    respuesta(404, ['success' => false,'Mensaje' => 'Publicación no encontrada o bloqueada'
+                    respuesta(404, ['success' => false,'mensaje' => 'Publicación no encontrada o bloqueada'
                     ]);
                 }
                 else{
-                    respuesta(200, ['success' => true, 'Mensaje:' => 'El estado de la publicación actualizado correctamente']);
+                    respuesta(200, ['success' => true, 'mensaje' => 'El estado de la publicación fue actualizado correctamente']);
                 }
             }
         }

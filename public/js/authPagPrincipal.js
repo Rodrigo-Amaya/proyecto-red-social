@@ -1,130 +1,164 @@
-document.getElementById("olvidoContrasena").addEventListener('click', function(){
-    window.location.href = 'ingresoCorreo.php';
-});
-
-/*-----------------------------------------------------------------------------------------
-                                FORMULARIO DE ENVIO LOGIN
------------------------------------------------------------------------------------------*/
-const formularioLogin = document.getElementById('formLogin');
-
-formularioLogin.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    //Datos enviados del formulario
-    const correo = document.getElementById('correoLogin').value;
-    const contrasena = document.getElementById('contrasenaLogin').value;
-
-    const datos = new FormData();
-
-    if(!validacionCorreo(correo)){
-        document.getElementById('errorLogin').style.display = "flex";
-        document.getElementById('errorLogin').textContent = 'Formato de correo inválido';
-        return;
-    }
-    datos.append('correo', correo);
-    datos.append('contrasena', contrasena);
-
-    try{
-
-        //Envio de los datos a la API
-        const response = await fetch(
-            'http://localhost/proyecto-red-social/api/usuarios/iniciarSesion',
-            {
-                method: 'POST',
-                body: datos
-            }
-        );
-
-        const texto = await response.text();
-        const resultado = JSON.parse(texto);
-
-        //Si hay algun error interno
-        if (!response.ok) {
-            document.getElementById('errorLogin').style.display = "flex";
-            document.getElementById('errorLogin').textContent = resultado.Mensaje;
-            return;
-        }
-
-        //Pasamos a la pagina de inicio
-        window.location.href = '../usuarios/perfilUsuarios.php';
-    }
-    catch(error){
-        console.error('Error al conectar con la API:', error);
-
-        document.getElementById('errorLogin').style.display = "flex";
-        document.getElementById('errorLogin').textContent =
-            'No se pudo conectar con el servidor';
-    }
-});
-
 function validacionCorreo(correo){
     const regexCorreo = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return regexCorreo.test(correo.trim());
 }
-/*-----------------------------------------------------------------------------------------
-                               FORMULARIO DE ENVIO REGISTRO
------------------------------------------------------------------------------------------*/
 
+function mostrarError(id, mensaje){
+    const caja = document.getElementById(id);
+    caja.textContent = mensaje;
+    caja.style.display = "flex";
+}
+
+function ocultarError(id){
+    const caja = document.getElementById(id);
+    caja.textContent = '';
+    caja.style.display = "none";
+}
+
+// Envía la petición y devuelve { ok, datos }. Lanza error si la respuesta no es JSON
+async function enviar(url, opciones){
+    const respuesta = await fetch(url, opciones);
+    const datos = await respuesta.json();
+    return { ok: respuesta.ok && datos.success === true, datos };
+}
+
+const libro = document.getElementById('libro');
+const base = libro.dataset.base;
+const api = base + '/api';
+const volver = libro.dataset.volver || 'inicio';
+
+/*-----------------------------------------------------------------------------------------
+                                ALTERNAR LOGIN / REGISTRO
+-----------------------------------------------------------------------------------------*/
+function mostrarPanel() {
+    const registro = window.location.hash === '#registro';
+    libro.classList.toggle('modo-registro', registro);
+    libro.classList.toggle('modo-login', !registro);
+    document.title = registro ? "t'ASK | Registro" : "t'ASK | Iniciar sesión";
+}
+
+window.addEventListener('hashchange', mostrarPanel);
+mostrarPanel();
+
+/*-----------------------------------------------------------------------------------------
+                                OLVIDO DE CONTRASEÑA
+-----------------------------------------------------------------------------------------*/
+document.getElementById('olvidoContrasena').addEventListener('click', function(){
+    window.location.href = "index.php?page=olvidarContrasena";
+});
+
+/*-----------------------------------------------------------------------------------------
+                                NIVELES DE ESTUDIO
+-----------------------------------------------------------------------------------------*/
+async function cargarNiveles(){
+    const select = document.getElementById('nivelEstudio');
+    try {
+        const { ok, datos } = await enviar(api + '/niveles');
+        if (!ok) throw new Error(datos.mensaje);
+
+        datos.niveles.forEach(n => {
+            const opcion = document.createElement('option');
+            opcion.value = n.id_nivel;
+            opcion.textContent = n.nombre;
+            select.appendChild(opcion);
+        });
+    } catch (error) {
+        console.error('No se pudieron cargar los niveles:', error.message);
+        mostrarError('errorRegistro', 'No se pudieron cargar los niveles de estudio');
+    }
+}
+
+/*-----------------------------------------------------------------------------------------
+                                FORMULARIO DE LOGIN
+-----------------------------------------------------------------------------------------*/
+document.getElementById('formLogin').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    ocultarError('errorLogin');
+
+    const correo = document.getElementById('correoLogin').value.trim();
+    const contrasena = document.getElementById('contrasenaLogin').value;
+
+    if (!validacionCorreo(correo)) {
+        mostrarError('errorLogin', 'Formato de correo inválido');
+        return;
+    }
+
+    try {
+        const { ok, datos } = await enviar(api + '/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ correo, contrasena })
+        });
+
+        if (!ok) {
+            mostrarError('errorLogin', datos.mensaje || 'No se pudo iniciar sesión');
+            return;
+        }
+
+        // Sesión iniciada: se vuelve a la página que se pedía
+        window.location.href = base + '/index.php?page=' + encodeURIComponent(volver);
+    } catch (error) {
+        console.error('Error al conectar con la API:', error);
+        mostrarError('errorLogin', 'No se pudo conectar con el servidor');
+    }
+});
+
+/*-----------------------------------------------------------------------------------------
+                                FORMULARIO DE REGISTRO
+-----------------------------------------------------------------------------------------*/
 const formularioRegistro = document.getElementById('formRegistro');
 
 formularioRegistro.addEventListener('submit', async (e) => {
     e.preventDefault();
+    ocultarError('errorRegistro');
 
-    //Datos enviados del formulario
-    const nombre = formularioRegistro.elements['nombre'].value;
-    const correo = formularioRegistro.elements['correo'].value;
+    const nombre = formularioRegistro.elements['nombre'].value.trim();
+    const correo = formularioRegistro.elements['correo'].value.trim();
     const contrasena = formularioRegistro.elements['contrasena'].value;
     const contrasenaValidar = formularioRegistro.elements['contrasenaValidar'].value;
     const nivelEstudio = formularioRegistro.elements['nivelEstudio'].value;
 
-    const datos = new FormData();
-
-    datos.append('nombre', nombre);
-    datos.append('correo', correo);
-    datos.append('contrasena', contrasena);
-    datos.append('contrasenaValidar', contrasenaValidar);
-    datos.append('nivelEstudio', nivelEstudio);
-
-    if(nivelEstudio === ''){
-        document.getElementById('errorRegistro').style.display = "flex";
-        document.getElementById('errorRegistro').textContent = 'Seleccione un nivel de estudio';
+    if (nivelEstudio === '') {
+        mostrarError('errorRegistro', 'Seleccione un nivel de estudio');
         return;
     }
 
-    if(!validacionCorreo(correo)){
-        document.getElementById('errorRegistro').style.display = "flex";
-        document.getElementById('errorRegistro').textContent = 'Formato de correo inválido';
+    if (!validacionCorreo(correo)) {
+        mostrarError('errorRegistro', 'Formato de correo inválido');
         return;
     }
 
-    try{
-        //Envio de los datos a la API
-        const response = await fetch(
-            'http://localhost/proyecto-red-social/api/usuarios/',
-            {
-                method: 'POST',
-                body: datos
-            }
-        );
+    // El backend valida las reglas; esto solo evita una petición inútil
+    if (contrasena !== contrasenaValidar) {
+        mostrarError('errorRegistro', 'Las contraseñas no coinciden');
+        return;
+    }
 
-        const texto = await response.text();
-        const resultado = JSON.parse(texto);
+    const datosForm = new FormData();
+    datosForm.append('nombre', nombre);
+    datosForm.append('correo', correo);
+    datosForm.append('contrasena', contrasena);
+    datosForm.append('contrasenaValidar', contrasenaValidar);
+    datosForm.append('nivelEstudio', nivelEstudio);
 
-        //Si hay algun error interno
-        if (!response.ok) {
-            document.getElementById('errorRegistro').style.display = "flex";
-            document.getElementById('errorRegistro').textContent = resultado.Mensaje;
+    try {
+        const { ok, datos } = await enviar(api + '/usuarios', {
+            method: 'POST',
+            body: datosForm
+        });
+
+        if (!ok) {
+            mostrarError('errorRegistro', datos.mensaje || 'No se pudo completar el registro');
             return;
         }
 
-        alert("Se ha registrado correctamente, puedes Inicar Sesion");
-        location.reload();
-    }
-    catch(error){
+        alert("Se ha registrado correctamente, ya puedes iniciar sesión");
+        formularioRegistro.reset();
+        window.location.hash = '#login'; // hashchange cambia el panel
+    } catch (error) {
         console.error('Error al conectar con la API:', error);
-
-        document.getElementById('errorRegistro').style.display = "flex";
-        document.getElementById('errorRegistro').textContent =
-            'No se pudo conectar con el servidor';
+        mostrarError('errorRegistro', 'No se pudo conectar con el servidor');
     }
 });
+
+cargarNiveles();

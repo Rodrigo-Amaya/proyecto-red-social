@@ -8,6 +8,63 @@
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== GET ==========
+        /**
+         * Devolver todas las publicaciones, paginadas y ordenadas desde la más reciente
+         * @return array Lista de publicaciones
+         */
+        public function feed(int $limite, ?int $antesDe, ?int $idMateria) : array{
+            $sql = "SELECT p.id_publicacion, p.titulo, p.fecha, p.mensaje, p.puntos, p.id_usuario, p.id_materia, p.estado,
+
+            u.nombre AS autor,
+            u.url_foto,
+            n.nombre AS nivel,
+            m.nombre AS materia,
+
+            (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1) AS archivo_1,
+
+            (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 1) AS archivo_2,
+
+            (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 2) AS archivo_3
+
+            FROM publicaciones p
+            INNER JOIN usuarios u ON u.id_usuario = p.id_usuario
+            INNER JOIN nivel_estudio n ON n.id_nivel = u.id_nivel
+            INNER JOIN materias m ON m.id_materia = p.id_materia
+            WHERE p.bloquear = 0 AND u.bloqueo_usuario = 0";
+
+            $parametros = [];
+            $tipos = "";
+
+            //filtro por materia
+            if ($idMateria !== null) {
+                $sql .= " AND p.id_materia = ?";
+                $parametros[] = $idMateria;
+                $tipos .= "i";
+            }
+
+            //cursor: publicaciones antes de la ultima recibida
+            if ($antesDe !== null) {
+                $sql .= " AND p.id_publicacion < ?";
+                $parametros[] = $antesDe;
+                $tipos .= "i";
+            }
+
+            $sql .= " ORDER BY p.id_publicacion DESC LIMIT ?";
+            $parametros[] = $limite + 1; //Paginacion
+            $tipos .= "i";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param($tipos, ...$parametros);
+            $stmt->execute();
+            $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+            $hayMas = count($filas) > $limite;
+            if ($hayMas) {
+                $filas = array_slice($filas, 0, $limite);
+            }
+
+            return ['publicaciones' => $filas, 'hay_mas' => $hayMas];
+        }
 
         public function todasPublicaciones(){
             $sql = "SELECT p.id_publicacion, p.titulo, p.fecha, p.mensaje, p.puntos, p.id_usuario, p.id_materia, p.estado,
@@ -60,11 +117,14 @@
             $parametros = [];
             $tipoParametro = "";
 
-            //busqueda por estado de bloqueo
+            //busqueda por estado de bloqueo 
             if ($bloqueado !== ''){
                 $sql .= " AND p.bloquear = ?";
                 $parametros[] = $bloqueado;
                 $tipoParametro .= "i";
+            }
+            else{
+                $sql .= " AND p.bloquear = 0";
             }
 
             //busqueda por titulo
@@ -74,7 +134,7 @@
                 $tipoParametro .= "s";
             }
 
-            //busqueda por usaurio
+            //busqueda por usuario
             if ($usuario !== ''){
                 $sql .= " AND p.id_usuario = ?";
                 $parametros[] = $usuario;
@@ -97,10 +157,10 @@
 
             //ordenar de forma
             if ($orden === 'ASC'){
-                $sql .= " ORDER BY p.nombre ASC";
+                $sql .= " ORDER BY p.fecha ASC";
             }
             if($orden === 'DESC'){
-                $sql .= " ORDER BY p.nombre DESC";
+                $sql .= " ORDER BY p.fecha DESC";
             }
 
             //ejecutamos el script SQL

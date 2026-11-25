@@ -23,6 +23,8 @@ $baseUrl = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
         <?php require $contentView; ?>
     </main>
 
-    <script src="<?= $baseUrl ?>/public/js/inicio.js"></script>
+    <?php if ($currentPage === 'inicio'): ?>
+        <script src="<?= $baseUrl ?>/public/js/inicio.js"></script>
+    <?php endif; ?>
 </body>
 </html>

@@ -21,13 +21,6 @@
                     };
                     return;
                 }
-                if($parte === "iniciarSesion"){
-                    match ($metodo){
-                        'POST'    => $this->iniciarSesionUsuario(),
-                        default  => noPermitido(),
-                    };
-                    return;
-                }
 
                 if($parte === "reseteoContrasena"){
                     match ($metodo){
@@ -147,43 +140,6 @@
 
             //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             //========== POST ==========
-             //Inicio de sesion
-            function iniciarSesionUsuario(): void {
-                if (isset($_POST["correo"]) && isset($_POST["contrasena"])) {
-
-                    $correo = trim($_POST["correo"]);
-                    $contrasena = $_POST["contrasena"];
-
-                    $resultado = $this->modelo->verficarUsuario($correo, $contrasena);
-
-                    switch ($resultado['estado']) {
-                        case 0:
-
-                            session_start();
-                            session_regenerate_id(true);
-
-                            $_SESSION['id_usuario'] = $resultado['usuario']['id_usuario'];
-                            $_SESSION['id_rol'] = $resultado['usuario']['id_rol'];
-                            $_SESSION['nombre_usuario'] = $resultado['usuario']['nombre'];
-
-                            respuesta(200, ['success' => true,'Mensaje' => 'Inicio de sesión exitoso']);
-                            return;
-
-                        case 1:
-                            respuesta(401, ['success' => false,'Mensaje' => 'Credenciales incorrectas']);
-                            return;
-
-                        case 2:
-                            respuesta(403, ['success' => false,'Mensaje' => 'Usuario bloqueado']);
-                            return;
-
-                        case 3:
-                            respuesta(401, ['success' => false,'Mensaje' => 'Contraseña incorrecta']);
-                            return;
-                    }
-                }
-            }
-
             //Generacion de token de reseteo
             function resetearContrasena(): void{
                 if (isset($_POST["correoRecuperacion"])) {
@@ -207,22 +163,30 @@
                 }
             }
 
-            function ingresarNuevoUsuario(): void {
+             function ingresarNuevoUsuario(): void {
 
-                $nombre = $_POST["nombre"] ?? '';
-                $correo = $_POST["correo"] ?? '';
+                $nombre = trim($_POST["nombre"] ?? '');
+                $correo = trim($_POST["correo"] ?? '');
                 $contrasena = $_POST["contrasena"] ?? '';
                 $contrasenaValidar = $_POST["contrasenaValidar"] ?? '';
-                $nivel = $_POST["nivelEstudio"] ?? '';
+                $nivel = trim($_POST["nivelEstudio"] ?? '');
 
                 //Si alguno de los campos ingresados esta vacio
                 if ( $nombre === '' || $correo === '' || $contrasena === '' || $contrasenaValidar === ''|| $nivel === '') {
-                    respuesta(400, ['success' => false, 'Mensaje' => 'Todos los campos son abligatorios']);
+                    respuesta(400, ['success' => false, 'mensaje' => 'Todos los campos son obligatorios']);
+                }
+
+                //Longitudes de las columnas
+                if (mb_strlen($nombre, 'UTF-8') > 100) {
+                    respuesta(400, ['success' => false, 'mensaje' => 'El nombre es muy largo']);
+                }
+                if (mb_strlen($correo, 'UTF-8') > 150) {
+                    respuesta(400, ['success' => false, 'mensaje' => 'El correo es muy largo']);
                 }
 
                 //Si correo no tiene el formato correcto
                 if(!filter_var($correo, FILTER_VALIDATE_EMAIL)){
-                    respuesta(400, ['success' => false, 'Mensaje' => 'Formato de correo incorrecto']);
+                    respuesta(400, ['success' => false, 'mensaje' => 'Formato de correo incorrecto']);
                 }
 
                 //Si la contraseña tiene al menos 8 caracteres, un caracter especial, numero y mayuscula
@@ -230,8 +194,11 @@
 
                 //si las contraseñas no coinciden
                 if($contrasena !== $contrasenaValidar){
-                    respuesta(400, ['success' => false, 'Mensaje' => 'Contraseñas no coinciden']);
+                    respuesta(400, ['success' => false, 'mensaje' => 'Las contraseñas no coinciden']);
                 }
+
+                //Que el nivel sea un entero
+                $nivel = validarCampoEntero($nivel);
 
                 //Valores por defecto
                 date_default_timezone_set('America/El_Salvador');
@@ -245,15 +212,22 @@
                     $nivel
                 );
 
-                //Respuesta obtenida
-                if($resultado === 1){
-                    respuesta(409, ['success' => false, 'Mensaje' => 'El correo se encuentra en uso']);
-                }
-                else if($resultado === 2){
-                    respuesta(400, ['success' => false, 'Mensaje' => 'Nivel de estudio inválido']);
-                }
-                else{
-                    respuesta(201, ['success' => true, 'Mensaje' => 'Usuario ingresado correctamente']);
+                //Cada codigo del modelo tiene su caso; los desconocidos responden error
+                switch ($resultado) {
+                    case 0:
+                        respuesta(201, ['success' => true, 'mensaje' => 'Usuario ingresado correctamente']);
+                        break;
+                    case 1:
+                        respuesta(409, ['success' => false, 'mensaje' => 'El correo se encuentra en uso']);
+                        break;
+                    case 2:
+                        respuesta(400, ['success' => false, 'mensaje' => 'Nivel de estudio inválido']);
+                        break;
+                    case 3:
+                        respuesta(500, ['success' => false, 'mensaje' => 'No se pudo asignar el rol por defecto']);
+                        break;
+                    default:
+                        respuesta(500, ['success' => false, 'mensaje' => 'Error interno del servidor']);
                 }
             }
 

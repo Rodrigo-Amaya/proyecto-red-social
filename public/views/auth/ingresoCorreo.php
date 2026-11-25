@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../../css/auth.css">
+    <link rel="stylesheet" href="<?= $baseUrl ?>/public/css/auth.css">
     <title>Recuperar mi contraseña</title>
 </head>
 <body>
@@ -13,7 +13,7 @@
         <!--ELEMENTOS PRINCIPALES-->
         <div class="subContenedorRecuperar">
             <form id="formCorreoRecuperacion">
-                <h1>¿Has olvidado tu contrseña?</h1>
+                <h1>¿Has olvidado tu contraseña?</h1>
                 <p>No hay problema, ingresa tu correo y podras cambiarla</p>
                 <!--correo-->
                 <label for="correoRecuperacion">Correo:</label>
