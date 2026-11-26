@@ -160,6 +160,31 @@ hr {
     padding: 30px 60px 30px 60px;
 }
 
+/* Formulario de registro */
+#registro {
+    box-sizing: border-box;
+    min-height: 0;
+}
+
+#formRegistro {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.camposRegistro {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 10px;
+}
+
+#formRegistro .btnSubmit,
+#formRegistro .cambioPanel {
+    flex-shrink: 0;
+}
+
 /*-----------------------------------------------------------
                         INPUTS               
 -----------------------------------------------------------*/
@@ -195,7 +220,7 @@ select {
 
     border: var(--color-borde) 1px solid; border-radius: 0.4rem;
     background-color: var(--fondo-inputs);
-    height: 50px; width: calc(100%-15px);
+    height: 50px; width: calc(100% - 15px);
     color: var(--texto);
     padding: 0px 0px 0px 15px;
     font-size: large;
