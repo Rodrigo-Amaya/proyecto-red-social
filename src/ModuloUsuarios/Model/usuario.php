@@ -1,6 +1,9 @@
 <?php 
     class Usuario {
         private mysqli $conn;
+
+        //Ajusta este ID al rol de administrador de tu tabla `roles` (el mismo de Profesor::ROL_ADMIN)
+        private const ROL_ADMIN = 3;
         
         public function __construct($dbConnection){
             $this->conn = $dbConnection;
@@ -74,6 +77,75 @@
             }
 
             //ejecutamos el script SQL
+            $stmt = $this->conn->prepare($sql);
+            if (!empty($parametros)) {
+                $stmt->bind_param($tipoParametro, ...$parametros);
+            }
+            $stmt->execute();
+
+            return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+
+        //---Administracion: indica si el usuario es administrador (lee la base, no la sesion)---
+        public function esAdministrador($id): bool{
+            $sql = "SELECT id_usuario FROM usuarios WHERE id_usuario = ? AND id_rol = ? AND bloqueo_usuario = 0";
+            $stmt = $this->conn->prepare($sql);
+            $rolAdmin = self::ROL_ADMIN;
+            $stmt->bind_param("ii", $id, $rolAdmin);
+            $stmt->execute();
+            return $stmt->get_result()->num_rows > 0;
+        }
+
+        //---Administracion: roles disponibles---
+        public function listarRoles(){
+            $resultado = $this->conn->query("SELECT id_rol, nombre FROM roles ORDER BY id_rol ASC");
+            return $resultado->fetch_all(MYSQLI_ASSOC);
+        }
+
+        //---Administracion: listado con id, rol, nivel y estado de bloqueo (incluye bloqueados)---
+        public function buscarParaAdministracion($busqueda, $rol, $bloqueado, $orden){
+            $sql = "SELECT u.id_usuario, u.nombre, u.correo, u.id_rol, r.nombre AS rol,
+                u.id_nivel, n.nombre AS nivel, u.fecha_registro, u.url_foto, u.bloqueo_usuario
+            FROM usuarios u
+            JOIN roles r ON r.id_rol = u.id_rol
+            LEFT JOIN nivel_estudio n ON n.id_nivel = u.id_nivel
+            WHERE 1=1";
+            $parametros = [];
+            $tipoParametro = "";
+
+            //busqueda por nombre o correo
+            if ($busqueda !== ''){
+                $sql .= " AND (u.nombre LIKE ? OR u.correo LIKE ?)";
+                $like = "%".$busqueda."%";
+                array_push($parametros, $like, $like);
+                $tipoParametro .= "ss";
+            }
+
+            //filtro por rol
+            if ($rol !== ''){
+                $sql .= " AND u.id_rol = ?";
+                $parametros[] = (int)$rol;
+                $tipoParametro .= "i";
+            }
+
+            //filtro por bloqueo
+            if ($bloqueado !== ''){
+                $sql .= " AND u.bloqueo_usuario = ?";
+                $parametros[] = (int)$bloqueado;
+                $tipoParametro .= "i";
+            }
+
+            //orden
+            if ($orden === 'ASC'){
+                $sql .= " ORDER BY u.nombre ASC";
+            }
+            else if ($orden === 'DESC'){
+                $sql .= " ORDER BY u.nombre DESC";
+            }
+            else{
+                $sql .= " ORDER BY u.fecha_registro DESC";
+            }
+
             $stmt = $this->conn->prepare($sql);
             if (!empty($parametros)) {
                 $stmt->bind_param($tipoParametro, ...$parametros);
@@ -397,6 +469,23 @@
             $sql = "UPDATE usuarios SET id_rol = ? WHERE id_usuario = ?";
             $stmt = $this->conn->prepare($sql);
             $stmt->bind_param("ii", $rol, $id); 
+            $stmt->execute();
+
+            return 0;
+        }
+
+        //---Bloquear (1) o desbloquear (0) un usuario---
+        // 0 = ok | 1 = usuario no encontrado
+        public function cambiarBloqueo($id, $bloqueo){
+            $stmt = $this->conn->prepare("SELECT id_usuario FROM usuarios WHERE id_usuario = ?");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            if ($stmt->get_result()->num_rows === 0) {
+                return 1;
+            }
+
+            $stmt = $this->conn->prepare("UPDATE usuarios SET bloqueo_usuario = ? WHERE id_usuario = ?");
+            $stmt->bind_param("ii", $bloqueo, $id);
             $stmt->execute();
 
             return 0;

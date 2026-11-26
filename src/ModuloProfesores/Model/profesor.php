@@ -352,11 +352,12 @@
             try {
                 //Guardamos la revision
                 $sql = "INSERT INTO revision_aplicacion_profesor
-                (id_aplicacion, id_administrador, estapa_revision, decision, comentario) VALUES (?,?,?,?,?)";
+                (id_aplicacion, id_administrador, etapa_revision, decision, comentario) VALUES (?,?,?,?,?)";
                 $stmt = $this->conn->prepare($sql);
                 $stmt->bind_param("iiiss", $id, $idAdministrador, $etapa, $decision, $comentario);
                 $stmt->execute();
 
+                
                 //Actualizamos la aplicacion
                 $sql = "UPDATE aplicacion_profesor SET
                     estado = ?,

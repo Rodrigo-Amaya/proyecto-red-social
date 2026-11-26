@@ -1,0 +1,102 @@
+/* Estilos de la vista de gestión de usuarios y del menú de administrador.
+   Reutiliza perfilUsuario.css / admin.css; aquí solo va lo nuevo. */
+
+.menuAdmin {
+    display: flex;
+    gap: 8px;
+    margin: 12px 0;
+    flex-wrap: wrap;
+}
+.menuAdmin a {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    text-decoration: none;
+    color: inherit;
+    font-size: 0.9rem;
+}
+.menuAdmin a.activo {
+    background: #1f2937;
+    border-color: #1f2937;
+    color: #fff;
+}
+
+#panelUsuarios {
+    flex: 1;
+    min-width: 0;
+    padding: 24px;
+}
+#panelUsuarios h1 { margin: 0 0 4px; }
+#resumenUsuarios { margin: 0 0 16px; opacity: 0.7; }
+
+#listaUsuarios { display: flex; flex-direction: column; gap: 10px; }
+
+.tarjetaUsuario {
+    display: grid;
+    grid-template-columns: 56px 1fr auto auto;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fff;
+}
+.tarjetaUsuario.usuarioBloqueado { background: #f9fafb; opacity: 0.8; }
+.usuarioFoto { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; }
+.usuarioDatos h3 { margin: 0; font-size: 1rem; }
+.usuarioDatos p { margin: 2px 0 0; font-size: 0.85rem; overflow-wrap: anywhere; }
+.usuarioCorreo { opacity: 0.8; }
+.usuarioMeta { opacity: 0.6; }
+
+.usuarioEtiquetas { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.etiquetaRol, .etiquetaEstado, .etiquetaYo {
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    background: #eef2ff;
+    color: #3730a3;
+}
+.etiquetaEstado.activo { background: #dcfce7; color: #166534; }
+.etiquetaEstado.bloqueado { background: #fee2e2; color: #991b1b; }
+.etiquetaYo { background: #f3f4f6; color: #374151; }
+
+.usuarioAcciones { display: flex; flex-direction: column; gap: 8px;  width: 150px;}
+.usuarioAcciones button { cursor: pointer; }
+.botonBloquear { color: #b91c1c; }
+.botonDesbloquear { color: #166534; }
+
+/* Panel de acción (mismo patrón que el panel de cambio de foto / revisión) */
+#panelAccionUsuario {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 20;
+    width: min(600px, 92vw);
+    padding: 30px 24px 30px 24px;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+    flex-direction: column; justify-content: space-between;
+}
+#panelAccionUsuario.visible { display: flex; }
+#botonSalirAccion { position: absolute; top: 10px; right: 10px; cursor: pointer; border-radius: 100%; min-width: 50px; mmin-height: 50px;}
+#formAccionUsuario { display: flex; flex-direction: column; gap: 30px; }
+#formAccionUsuario h2, #formAccionUsuario p { margin: 0; }
+#errorAccion { color: #b91c1c; font-size: 0.9rem; }
+
+#opacidadUsuarios {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.45);
+}
+#opacidadUsuarios.visible { display: block; }
+
+@media (max-width: 720px) {
+    .tarjetaUsuario { grid-template-columns: 56px 1fr; }
+    .usuarioEtiquetas { flex-direction: row; }
+    .usuarioAcciones { grid-column: 1 / -1; }
+}

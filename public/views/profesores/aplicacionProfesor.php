@@ -73,7 +73,7 @@
                     <div class="campoProfesor">
                         <label for="telefono_universidad">Teléfono de la universidad (opcional):</label>
                         <div class="contenedorInputs">
-                            <input type="tel" name="telefono_universidad" id="telefono_universidad" maxlength="30">
+                            <input type="tel" minlength="8" maxlength="8" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" name="telefono_universidad" id="telefono_universidad" maxlength="30">
                         </div>
                     </div>
 
