@@ -1,4 +1,3 @@
-
 <?php
     class ComentarioController implements Controlador
     {
@@ -41,6 +40,16 @@
 
             // URL: /publicacion/{idPublicacion}/comentario/{idComentario}
             $idComentario = validarId($idComentario, 'ID de comentario inválido');
+
+            // URL: /publicacion/{idPublicacion}/comentario/{idComentario}/like
+            if (($partes[4] ?? null) === 'like' && !isset($partes[5])) {
+                match ($metodo) {
+                    'POST'   => $this->darLike($idPublicacion, $idComentario),
+                    'DELETE' => $this->quitarLike($idPublicacion, $idComentario),
+                    default  => noPermitido(),
+                };
+                return;
+            }
 
             if (isset($partes[4])) {
                 noEncontrado();
@@ -486,6 +495,61 @@
                     'success' => false,
                     'Mensaje' => 'Comentario o usuario no encontrado, o bloqueado'
                 ]);
+            }
+        }
+
+
+        //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        //========== LIKES (usuario tomado de la sesion) ==========
+
+        // POST /publicacion/{id}/comentario/{idComentario}/like
+        public function darLike(int $idPublicacion, int $idComentario): void
+        {
+            $usuario = usuarioActual();
+
+            switch ($this->modelo->darLike($idComentario, $idPublicacion, $usuario)) {
+                case 0:
+                    respuesta(201, [
+                        'success' => true,
+                        'Mensaje' => 'Like registrado',
+                        'total_likes' => $this->modelo->totalLikes($idComentario)
+                    ]);
+                    break;
+                case 1:
+                    respuesta(404, ['success' => false, 'Mensaje' => 'Comentario no encontrado o bloqueado']);
+                    break;
+                case 2:
+                    respuesta(404, ['success' => false, 'Mensaje' => 'Usuario no encontrado o bloqueado']);
+                    break;
+                case 3:
+                    respuesta(409, ['success' => false, 'Mensaje' => 'Ya le diste like a este comentario']);
+                    break;
+                default:
+                    respuesta(500, ['success' => false, 'Mensaje' => 'Error inesperado al registrar el like']);
+            }
+        }
+
+        // DELETE /publicacion/{id}/comentario/{idComentario}/like
+        public function quitarLike(int $idPublicacion, int $idComentario): void
+        {
+            $usuario = usuarioActual();
+
+            switch ($this->modelo->quitarLike($idComentario, $idPublicacion, $usuario)) {
+                case 0:
+                    respuesta(200, [
+                        'success' => true,
+                        'Mensaje' => 'Like retirado',
+                        'total_likes' => $this->modelo->totalLikes($idComentario)
+                    ]);
+                    break;
+                case 1:
+                    respuesta(404, ['success' => false, 'Mensaje' => 'Comentario no encontrado o bloqueado']);
+                    break;
+                case 3:
+                    respuesta(404, ['success' => false, 'Mensaje' => 'No habías dado like a este comentario']);
+                    break;
+                default:
+                    respuesta(500, ['success' => false, 'Mensaje' => 'Error inesperado al retirar el like']);
             }
         }
     }

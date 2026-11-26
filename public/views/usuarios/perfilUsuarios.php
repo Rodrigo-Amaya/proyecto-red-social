@@ -71,9 +71,6 @@
                 <button type="button" id="botonGestionUsuarios" onclick="location.href='index.php?page=gestion-usuarios'">Gestionar usuarios</button>
             </div>
         <?php endif; ?>
-        <form action="cerrarSesion.php" method="POST">
-            <button type="submit" id="cerrarSesion">Cerrar sesión</button>
-        </form>
         <?php if (!$esProfesor && !$esAdmin): ?>
             <p id="profesor" onclick="quieroSerProfesor('<?= $baseUrl ?>')">Quiero ser un profesor</p>
         <?php endif; ?>
