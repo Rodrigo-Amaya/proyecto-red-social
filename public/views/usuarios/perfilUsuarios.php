@@ -1,5 +1,4 @@
 <?php
-session_start();
     $id_usuario = $_SESSION['id_usuario'] ?? NULL;
 
     //Sino hay sesion iniciada
@@ -19,9 +18,7 @@ session_start();
 
     $usuario = $datos['Usuarios'];
 
-    //Ajusta estos IDs a los de tu tabla `roles` (los mismos de Profesor::ROL_PROFESOR y ROL_ADMIN)
-    const ROL_PROFESOR = 2;
-    const ROL_ADMIN = 3;
+    //ROL_PROFESOR y ROL_ADMIN se definen en index.php
 
     //El rol de la base de datos es el que manda (la sesion puede estar desactualizada si lo acaban de aprobar)
     $idRol = (int)($usuario['id_rol'] ?? $_SESSION['id_rol'] ?? 0);
@@ -47,15 +44,16 @@ session_start();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../../css/perfilUsuario.css">
+    <link rel="stylesheet" href="<?= $baseUrl ?>/public/css/perfilUsuario.css">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <title>Perfil</title>
 </head>
 <body>
     <!--Datos basicos-->
-    <div>
+    <div id="datosBasicos">
+        <button onclick="regresar('<?= $baseUrl ?>/')">Regresar</button>
         <div id="panelDatosBasicos">
-            <img src="../../../<?= htmlspecialchars($usuario['url_foto'] ?? 'documentos/usuarios/imagenes/blank-profile-picture.png');?>" alt="Foto de perfil" width="150px">
+            <img src="<?= $baseUrl ?>/<?= htmlspecialchars($usuario['url_foto'] ?? 'documentos/usuarios/imagenes/blank-profile-picture.png');?>" alt="Foto de perfil" width="150px">
             <button onclick="abrirPanelFoto()">Cambiar Foto de Perfil</button>
             <h2><?= htmlspecialchars($usuario['nombre']) ?></h2>
             <p><?= htmlspecialchars($usuario['nivel']) ?></p>
@@ -69,14 +67,15 @@ session_start();
         </div>
         <?php if ($esAdmin): ?>
             <div class="contenedorBoton">
-                <button type="button" id="botonSolicitudes" onclick="irASolicitudes()">Solicitudes</button>
+                <button type="button" id="botonSolicitudes" onclick="location.href='index.php?page=solicitudes'">Solicitudes</button>
+                <button type="button" id="botonGestionUsuarios" onclick="location.href='index.php?page=gestion-usuarios'">Gestionar usuarios</button>
             </div>
         <?php endif; ?>
         <form action="cerrarSesion.php" method="POST">
             <button type="submit" id="cerrarSesion">Cerrar sesión</button>
         </form>
         <?php if (!$esProfesor && !$esAdmin): ?>
-            <p onclick="quieroSerProfesor()">Quiero ser un profesor</p>
+            <p id="profesor" onclick="quieroSerProfesor('<?= $baseUrl ?>')">Quiero ser un profesor</p>
         <?php endif; ?>
     </div>
             
@@ -136,7 +135,7 @@ session_start();
     <script>
         const idUsuario = <?= json_encode($_SESSION['id_usuario']) ?>;
     </script>
-    <script src="../../js/perfilUsuario.js"></script>
-    <script src="../../js/auth.js"></script>
+    <script src="<?= $baseUrl ?>/public/js/perfilUsuario.js"></script>
+    <script src="<?= $baseUrl ?>/public/js/auth.js"></script>
 </body>
 </html>
