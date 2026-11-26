@@ -11,48 +11,7 @@ $publicaciones = $publicaciones ?? [];
         <input type="search"
             placeholder="Busca una tarea, una habilidad o una persona">
 
-        <div class="perfil">
-            <?php if ($usuario): ?>
-                <!-- NOTIFICACIONES -->
-                <div class="notificaciones" id="notificaciones"
-                     data-api="<?= htmlspecialchars($baseUrl) ?>/api"
-                     data-base="<?= htmlspecialchars($baseUrl) ?>">
-                    <button type="button" id="notif-boton" class="notif-boton" aria-label="Notificaciones" aria-haspopup="true" aria-expanded="false" aria-controls="notif-panel">
-                        <svg class="icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>
-                </svg>
-                        <span class="notif-contador" id="notif-contador" hidden>0</span>
-                    </button>
-
-                    <div class="notif-panel" id="notif-panel" hidden>
-                        <div class="notif-cabecera">
-                            <h3>Notificaciones</h3>
-                            <button type="button" id="notif-leer-todas" class="notif-enlace">Marcar todas como leídas</button>
-                        </div>
-                        <ul class="notif-lista" id="notif-lista"></ul>
-                        <p class="notif-vacio" id="notif-vacio" hidden>No tienes notificaciones.</p>
-                        <p class="notif-error" id="notif-error" hidden>No se pudieron cargar las notificaciones.</p>
-                        <button type="button" id="notif-mas" class="notif-enlace notif-mas" hidden>Ver más</button>
-                    </div>
-                </div>
-                <button type="button" id="btn-cerrar-sesion" data-api="<?= htmlspecialchars($baseUrl) ?>/api">Cerrar sesión</button>
-                <a href="index.php?page=perfil" class="perfil-foto" aria-label="Mi perfil" title="Mi perfil">
-                    <?php if (!empty($usuario['url_foto'])): ?>
-                        <img src="<?= htmlspecialchars($usuario['url_foto']) ?>"
-                            alt="Foto de <?= htmlspecialchars($usuario['nombre'] ?? 'usuario') ?>">
-                    <?php else: ?>
-                        <span><?= htmlspecialchars(mb_strtoupper(mb_substr($usuario['nombre'] ?? 'U', 0, 1))) ?></span>
-                    <?php endif; ?>
-                </a>
-            <?php else: ?>
-                <button>
-                    <svg class="icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>
-                </svg>
-                </button>
-                <a href="index.php?page=login&volver=inicio" class="btn-login">Iniciar sesión</a>
-            <?php endif; ?>
-        </div>
+        <?php require __DIR__ . '/../shared/header.php'; ?>
     </header>
 
     <div class="page-grid">
@@ -77,11 +36,33 @@ $publicaciones = $publicaciones ?? [];
             <?php else: ?>
             <section id="crear-publicacion">
 
-                <form action="/publicaciones/crear" method="POST">
-                    <textarea name="mensaje" 
-                    placeholder="¿Con qué necesitas ayuda?" required></textarea>
+                <form id="form-publicacion">
+                    <select id="pub-materia" name="id_materia" required>
+                        <option value="">Elige una materia</option>
+                    </select>
 
-                    <button type="submit">+ Publicar tarea</button>
+                    <input type="text" id="pub-titulo" name="titulo"
+                           placeholder="Título de tu pregunta" maxlength="200" required>
+
+                    <textarea id="pub-mensaje" name="mensaje"
+                              placeholder=" Describe ¿Con qué necesitas ayuda?" maxlength="5000" required></textarea>
+
+                    <div class="adjuntos">
+                        <p class="adjuntos-titulo">Archivos adjuntos</p>
+                        <ul id="pub-adjuntos" class="adjuntos-lista"></ul>
+                    </div>
+
+                    <p id="pub-estado" class="form-estado" role="alert" hidden></p>
+
+                    <div class="form-acciones">
+                        <input type="file" id="pub-archivos" multiple hidden
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.webp">
+                        <button type="button" id="pub-adjuntar" title="Adjuntar archivos" aria-label="Adjuntar archivos">
+                            <svg class="icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                            <span class="adjuntar-texto">Adjuntar</span>
+                        </button>
+                        <button type="submit" id="pub-enviar">+ Publicar tarea</button>
+                    </div>
                 </form>
 
             </section>

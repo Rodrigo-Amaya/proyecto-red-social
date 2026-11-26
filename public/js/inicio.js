@@ -24,6 +24,7 @@ async function iniciarFeed(feed) {
     const flechaAnterior = document.getElementById('filtro-anterior');
     const flechaSiguiente = document.getElementById('filtro-siguiente');
 
+    const ICONO_CLIP = '<svg class="icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
     const ICONO_GUARDAR = '<svg class="icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
 
     function actualizarIconoGuardar(boton, guardada) {
@@ -140,19 +141,26 @@ async function iniciarFeed(feed) {
         return nodo;
     }
 
+    // Foto del autor, o su inicial si no tiene foto
+    function crearAvatar(url, nombre) {
+        if (url) {
+            const img = crear('img', 'avatar');
+            img.src = url;
+            img.alt = 'Foto de ' + (nombre || 'usuario');
+            return img;
+        }
+        return crear('span', 'avatar avatar-inicial', (nombre || 'U').charAt(0).toUpperCase());
+    }
+
     // Contenedor de publicaciones
     function crearTarjeta(p) {
         const articulo = crear('article', 'publicacion');
         articulo.dataset.materia = p.id_materia;
         articulo.dataset.id = p.id_publicacion;
+        const urlDetalle = 'index.php?page=publicacion&id=' + encodeURIComponent(p.id_publicacion);
 
         const cabecera = crear('header', 'publicacion-autor');
-        if (p.url_foto) {
-            const foto = document.createElement('img');
-            foto.src = p.url_foto;
-            foto.alt = 'Foto de ' + (p.autor || 'usuario');
-            cabecera.appendChild(foto);
-        }
+        cabecera.appendChild(crearAvatar(p.url_foto, p.autor));
 
         const info = crear('div', 'publicacion-info');
         info.appendChild(crear('strong', '', p.autor || 'Usuario eliminado'));
@@ -164,8 +172,22 @@ async function iniciarFeed(feed) {
         }
 
         articulo.appendChild(cabecera);
-        articulo.appendChild(crear('p', 'publicacion-titulo', p.titulo));
+        const titulo = crear('p', 'publicacion-titulo');
+        const enlaceTitulo = crear('a', 'publicacion-enlace', p.titulo);
+        enlaceTitulo.href = urlDetalle;
+        titulo.appendChild(enlaceTitulo);
+        articulo.appendChild(titulo);
         articulo.appendChild(crear('p', '', p.mensaje));
+
+        // Indicador de archivos adjuntos
+        const totalArchivos = [p.archivo_1, p.archivo_2, p.archivo_3].filter(Boolean).length;
+        if (totalArchivos > 0) {
+            const adjuntos = crear('a', 'publicacion-adjuntos-indicador');
+            adjuntos.href = urlDetalle;
+            adjuntos.innerHTML = ICONO_CLIP; // constante propia, sin datos del servidor
+            adjuntos.appendChild(crear('span', '', totalArchivos === 1 ? '1 archivo adjunto' : totalArchivos + ' archivos adjuntos'));
+            articulo.appendChild(adjuntos);
+        }
 
         const acciones = crear('footer', 'publicacion-acciones');
 
@@ -178,6 +200,10 @@ async function iniciarFeed(feed) {
         guardar.setAttribute('aria-label', 'Guardar publicación');
         guardar.innerHTML = ICONO_GUARDAR; // constante propia, sin datos del servidor
 
+        responder.addEventListener('click', () => {
+            window.location.href = haySesion ? urlDetalle : urlLogin;
+        });
+
         const estaGuardada = publicacionesGuardadas.has(Number(p.id_publicacion));
         actualizarIconoGuardar(guardar, estaGuardada);
 
@@ -188,10 +214,14 @@ async function iniciarFeed(feed) {
         }
 
         if (!haySesion) {
-            responder.addEventListener('click', () => { window.location.href = urlLogin; });
             guardar.addEventListener('click', () => { window.location.href = urlLogin; });
         }
 
+        const total = Number(p.total_comentarios) || 0;
+        const contador = crear('a', 'publicacion-comentarios', total === 1 ? '1 comentario' : total + ' comentarios');
+        contador.href = urlDetalle;
+
+        acciones.appendChild(contador);
         acciones.appendChild(responder);
         acciones.appendChild(guardar);
         articulo.appendChild(acciones);
@@ -295,11 +325,20 @@ async function iniciarFeed(feed) {
             const datos = await respuesta.json();
             if (!respuesta.ok || !datos.success) throw new Error(datos.mensaje);
 
+            const selector = document.getElementById('pub-materia');
+
             datos.materias.forEach(m => {
                 const boton = crear('button', '', m.nombre);
                 boton.type = 'button';
                 boton.dataset.materia = m.id_materia;
                 nav.appendChild(boton);
+
+                // Selector del formulario de publicar (solo existe con sesión iniciada)
+                if (selector) {
+                    const opcion = crear('option', '', m.nombre);
+                    opcion.value = m.id_materia;
+                    selector.appendChild(opcion);
+                }
             });
             actualizarFlechas();
         } catch (e) {
@@ -307,6 +346,113 @@ async function iniciarFeed(feed) {
         }
     }
 
+    // Formulario para publicar
+    function iniciarFormularioPublicar() {
+        const form = document.getElementById('form-publicacion');
+        if (!form) return;
+
+        const MAX_ARCHIVOS = 3;
+        const MAX_BYTES = 10 * 1024 * 1024;
+
+        const inputArchivos = document.getElementById('pub-archivos');
+        const botonAdjuntar = document.getElementById('pub-adjuntar');
+        const botonEnviar = document.getElementById('pub-enviar');
+        const lista = document.getElementById('pub-adjuntos');
+        const estado = document.getElementById('pub-estado');
+
+        let adjuntos = [];
+        let enviando = false;
+
+        function mostrarEstado(texto, esError) {
+            estado.textContent = texto;
+            estado.classList.toggle('form-estado-error', esError);
+            estado.hidden = false;
+        }
+
+        function ocultarEstado() {
+            estado.hidden = true;
+        }
+
+        function dibujarAdjuntos() {
+            lista.replaceChildren();
+            adjuntos.forEach((archivo, i) => {
+                const item = crear('li', 'adjunto');
+                item.appendChild(crear('span', 'adjunto-nombre', archivo.name));
+
+                const quitar = crear('button', 'adjunto-quitar', 'Quitar');
+                quitar.type = 'button';
+                quitar.setAttribute('aria-label', 'Quitar ' + archivo.name);
+                quitar.addEventListener('click', () => {
+                    adjuntos.splice(i, 1);
+                    dibujarAdjuntos();
+                    ocultarEstado();
+                });
+
+                item.appendChild(quitar);
+                lista.appendChild(item);
+            });
+            botonAdjuntar.disabled = adjuntos.length >= MAX_ARCHIVOS;
+        }
+
+        botonAdjuntar.addEventListener('click', () => inputArchivos.click());
+
+        inputArchivos.addEventListener('change', () => {
+            ocultarEstado();
+            for (const archivo of inputArchivos.files) {
+                if (adjuntos.length >= MAX_ARCHIVOS) {
+                    mostrarEstado('Máximo ' + MAX_ARCHIVOS + ' archivos por publicación.', true);
+                    break;
+                }
+                // Solo ayuda: el servidor vuelve a validar tamaño y tipo
+                if (archivo.size > MAX_BYTES) {
+                    mostrarEstado('"' + archivo.name + '" supera los 10 MB.', true);
+                    continue;
+                }
+                adjuntos.push(archivo);
+            }
+            inputArchivos.value = '';
+            dibujarAdjuntos();
+        });
+
+        form.addEventListener('submit', async evento => {
+            evento.preventDefault();
+            if (enviando) return;
+
+            const datos = new FormData();
+            datos.append('titulo', document.getElementById('pub-titulo').value.trim());
+            datos.append('id_materia', document.getElementById('pub-materia').value);
+            datos.append('mensaje', document.getElementById('pub-mensaje').value.trim());
+            adjuntos.forEach((archivo, i) => datos.append('archivo_' + (i + 1), archivo));
+
+            enviando = true;
+            botonEnviar.disabled = true;
+            botonEnviar.textContent = 'Publicando...';
+            ocultarEstado();
+
+            try {
+                const respuesta = await fetch(`${api}/publicaciones`, { method: 'POST', body: datos });
+                const resultado = await respuesta.json();
+
+                if (!respuesta.ok || !resultado.success) {
+                    throw new Error(resultado.mensaje || 'No se pudo publicar');
+                }
+
+                form.reset();
+                adjuntos = [];
+                dibujarAdjuntos();
+                mostrarEstado('Publicación creada correctamente.', false);
+                reiniciar(); // recarga el feed conservando el filtro de materia
+            } catch (e) {
+                mostrarEstado(e instanceof SyntaxError ? 'Respuesta inválida del servidor' : e.message, true);
+            } finally {
+                enviando = false;
+                botonEnviar.disabled = false;
+                botonEnviar.textContent = '+ Publicar tarea';
+            }
+        });
+    }
+
+    iniciarFormularioPublicar();
     cargarMaterias();
 
     if (haySesion) {
@@ -315,18 +461,4 @@ async function iniciarFeed(feed) {
 
     cargarMas();
     observador.observe(centinela);
-}
-
-// Cerrar sesión
-const botonSalir = document.getElementById('btn-cerrar-sesion');
-
-if (botonSalir) {
-    botonSalir.addEventListener('click', async () => {
-        try {
-            await fetch(botonSalir.dataset.api + '/auth/logout', { method: 'POST' });
-        } catch (e) {
-            console.error('No se pudo cerrar la sesión:', e.message);
-        }
-        window.location.href = 'index.php?page=inicio';
-    });
 }

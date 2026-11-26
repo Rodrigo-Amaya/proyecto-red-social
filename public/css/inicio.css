@@ -349,6 +349,199 @@ button {
         display: none;
     }
 }
+
+/* ENLACES DE LA TARJETA AL DETALLE */
+
+.publicacion-enlace {
+    color: inherit;
+    text-decoration: none;
+}
+
+.publicacion-enlace:hover {
+    text-decoration: underline;
+}
+
+.publicacion-comentarios {
+    margin-right: auto;
+    color: var(--color-subtext);
+    font-size: var(--font-size-body);
+    text-decoration: none;
+}
+
+.publicacion-comentarios:hover {
+    color: var(--color-button);
+}
+
+/* AVATAR */
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.avatar-inicial {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-button);
+    color: var(--color-background);
+    font-weight: var(--font-weight-bold);
+}
+
+/* FORMULARIO DE PUBLICAR: título, materia y adjuntos */
+
+#crear-publicacion input[type="text"],
+#crear-publicacion select {
+    box-sizing: border-box;
+    width: 100%;
+    border: none;
+    background-color: var(--color-bg-secondary);
+    border-radius: 9px;
+    padding: 14px 15px;
+    font-family: inherit;
+    font-size: inherit;
+    color: var(--color-text);
+}
+
+#crear-publicacion input[type="text"]:focus,
+#crear-publicacion select:focus,
+#crear-publicacion textarea:focus {
+    outline: 2px solid var(--color-button);
+    outline-offset: 0;
+}
+
+.adjuntos-lista {
+    box-sizing: border-box;
+    width: 100%;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.adjuntos-lista:empty {
+    display: none;
+}
+
+.adjuntos {
+    box-sizing: border-box;
+    width: 100%;
+    padding-top: 15px;
+    border-top: 1px solid var(--color-border);
+}
+
+/* Sin archivos: se oculta el título y el separador */
+.adjuntos:not(:has(li)) {
+    display: none;
+}
+
+.adjuntos-titulo {
+    margin-bottom: 10px;
+    font-size: var(--font-size-note);
+    color: var(--color-title);
+}
+
+.adjunto {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 12px;
+    background-color: var(--color-bg-links);
+    border-radius: 9px;
+}
+
+.adjunto-nombre {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#crear-publicacion .adjunto-quitar {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    background-color: transparent;
+    color: var(--color-subtext);
+}
+
+#crear-publicacion .adjunto-quitar:hover {
+    color: #b3261e;
+}
+
+.form-estado {
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0;
+    color: var(--color-button);
+}
+
+.form-estado.form-estado-error {
+    color: #b3261e;
+}
+
+.form-acciones {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    width: 100%;
+}
+
+#crear-publicacion #pub-adjuntar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: transparent;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+#crear-publicacion #pub-adjuntar:hover:not(:disabled),
+#crear-publicacion #pub-adjuntar:focus-visible:not(:disabled) {
+    border-color: var(--color-button);
+    outline: none;
+}
+
+@media (max-width: 600px) {
+    .adjuntar-texto {
+        display: none;
+    }
+}
+
+#crear-publicacion button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* INDICADOR DE ARCHIVOS ADJUNTOS EN EL FEED */
+
+.publicacion-adjuntos-indicador {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background-color: var(--color-bg-links);
+    color: var(--color-button);
+    font-size: var(--font-size-note);
+    text-decoration: none;
+}
+
+.publicacion-adjuntos-indicador .icono {
+    width: 16px;
+    height: 16px;
+}
+
+.publicacion-adjuntos-indicador:hover {
+    text-decoration: underline;
+
 .btn-guardar.guardada {
     color: var(--color-button);
 }

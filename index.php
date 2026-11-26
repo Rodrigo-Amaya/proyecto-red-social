@@ -73,6 +73,11 @@ $pages = [
         'view'  => '/public/views/publicaciones/guardados.php',
         'protegida' => true
     ],
+    'publicacion' => [
+        'title' => 'Publicación',
+        'view'  => '/public/views/publicaciones/detalle.php',
+        'protegida' => false
+    ],
     'solicitudes' => [
         'title' => 'Solicitudes de profesores',
         'view'  => '/public/views/administrador/revisarSolicitud.php',
@@ -117,6 +122,16 @@ if (isset($_GET['debug'])) {
 if ($page === 'login' && $usuario !== null) {
     header('Location: index.php?page=' . urlencode($volver));
     exit;
+}
+
+//Validadr id de publicacion
+$idPublicacion = null;
+if ($page === 'publicacion') {
+    $idPublicacion = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT);
+    if ($idPublicacion === false || $idPublicacion <= 0) {
+        header('Location: index.php?page=inicio');
+        exit;
+    }
 }
 
 $pageTitle = $pages[$page]['title'];

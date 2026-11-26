@@ -20,6 +20,10 @@
             n.nombre AS nivel,
             m.nombre AS materia,
 
+            (SELECT COUNT(*) FROM comentarios c
+             INNER JOIN usuarios uc ON uc.id_usuario = c.id_usuario
+             WHERE c.id_publicacion = p.id_publicacion AND c.bloquear = 0 AND uc.bloqueo_usuario = 0) AS total_comentarios,
+
             (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1) AS archivo_1,
 
             (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 1) AS archivo_2,
@@ -85,20 +89,39 @@
         public function buscarPorID($id){
             $sql = ("SELECT p.id_publicacion, p.titulo, p.fecha, p.mensaje, p.puntos, p.id_usuario, p.id_materia, p.estado,
 
+            u.nombre AS autor,
+            u.url_foto,
+            n.nombre AS nivel,
+            m.nombre AS materia,
+
+            (SELECT COUNT(*) FROM comentarios c
+             INNER JOIN usuarios uc ON uc.id_usuario = c.id_usuario
+             WHERE c.id_publicacion = p.id_publicacion AND c.bloquear = 0 AND uc.bloqueo_usuario = 0) AS total_comentarios,
+
             (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1) AS archivo_1,
 
             (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 1) AS archivo_2,
 
-            (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 2) AS archivo_3
+            (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 2) AS archivo_3,
+
+            (SELECT a.nombre_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1) AS archivo_1_nombre,
+
+            (SELECT a.nombre_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 1) AS archivo_2_nombre,
+
+            (SELECT a.nombre_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 2) AS archivo_3_nombre
 
             FROM publicaciones p
-            WHERE id_publicacion = ? AND p.bloquear = 0;");
+            INNER JOIN usuarios u ON u.id_usuario = p.id_usuario
+            INNER JOIN nivel_estudio n ON n.id_nivel = u.id_nivel
+            INNER JOIN materias m ON m.id_materia = p.id_materia
+            WHERE p.id_publicacion = ? AND p.bloquear = 0 AND u.bloqueo_usuario = 0;");
             $stmt = $this->conn->prepare($sql);
             $stmt->bind_param("i", $id); 
             
             if($stmt->execute()){
                 return $stmt->get_result()->fetch_assoc(); 
             }
+            return null;
         }
 
         //---Busqueda mediante filtros---
@@ -545,51 +568,85 @@
                 return $validacion;
             }
 
-            //Calculamos los puntos de la publicación a partir de los datos ingresados
-            $puntos = $this->puntosPublicacion($titulo, $mensaje, $usuario, $materia);
+            $archivos = [$archivo1, $archivo2, $archivo3];
+
+            //Contamos solo los archivos realmente enviados
+            $totalArchivos = 0;
+            foreach ($archivos as $archivo) {
+                if (is_array($archivo) && ($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+                    $totalArchivos++;
+                }
+            }
+
+            //Puntos por contenido + 10 por archivo, con tope de 100
+            $puntos = $this->puntosPublicacion($titulo, $mensaje, $usuario, $materia) + ($totalArchivos * 10);
+            $puntos = min($puntos, 100);
 
             //valores por defecto
             date_default_timezone_set('America/El_Salvador');
             $fecha = date('Y-m-d H:i:s');
             $estado = "SINRESOLVER";
-            
-            $sql = "INSERT INTO publicaciones 
-            (titulo, fecha, mensaje, puntos, id_usuario, id_materia, estado) VALUES (?,?,?,?,?,?,?)";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("sssiiis", $titulo, $fecha, $mensaje, $puntos, $usuario, $materia, $estado);
-            $stmt->execute();
-            $idPublicacion = $this->conn->insert_id;
 
-            $archivos = [$archivo1, $archivo2, $archivo3];
+            $this->conn->begin_transaction();
+            $rutasSubidas = [];
 
-            //Para cada archivo se guarda
-            foreach ($archivos as $indice => $archivo) {
-                //Si no se envió un archivo
-                if ($archivo === null || $archivo['error'] === UPLOAD_ERR_NO_FILE) {
-                    continue;
-                }
-                $ruta = $this->guardarDocumento($archivo, $idPublicacion, $indice + 1);
-
-                if ($ruta === false) {
-                    return 3;
-                }
-
-                $tipoArchivo = $extenciones[$indice];
-                $nombre = basename($ruta);
-
-                $sql = "INSERT INTO archivos_publicaciones 
-                (id_publicacion, url_archivo, nombre_archivo, tipo_archivo, fecha_subida) 
-                VALUES (?,?,?,?,?)";
-
+            try {
+                $sql = "INSERT INTO publicaciones 
+                (titulo, fecha, mensaje, puntos, id_usuario, id_materia, estado) VALUES (?,?,?,?,?,?,?)";
                 $stmt = $this->conn->prepare($sql);
-                $stmt->bind_param("issss", $idPublicacion, $ruta, $nombre, $tipoArchivo, $fecha);
-
-                if (!$stmt->execute()) {
-                    return 3;
+                if ($stmt === false) {
+                    throw new RuntimeException($this->conn->error);
                 }
-            }
+                $stmt->bind_param("sssiiis", $titulo, $fecha, $mensaje, $puntos, $usuario, $materia, $estado);
+                if (!$stmt->execute()) {
+                    throw new RuntimeException($stmt->error);
+                }
+                $idPublicacion = $this->conn->insert_id;
+                $stmt->close();
 
-            return 0;
+                //Para cada archivo se guarda
+                foreach ($archivos as $indice => $archivo) {
+                    //Si no se envió un archivo
+                    if (!is_array($archivo) || ($archivo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+                        continue;
+                    }
+
+                    //false: los puntos de los archivos ya se calcularon arriba
+                    $ruta = $this->guardarDocumento($archivo, $idPublicacion, $indice + 1, false);
+
+                    if ($ruta === false) {
+                        throw new RuntimeException('Error guardando archivo ' . ($indice + 1));
+                    }
+                    $rutasSubidas[] = $ruta;
+
+                    $tipoArchivo = $extenciones[$indice] ?? '';
+                    $nombre = $this->nombreOriginal($archivo, $ruta);
+
+                    $sql = "INSERT INTO archivos_publicaciones 
+                    (id_publicacion, url_archivo, nombre_archivo, tipo_archivo, fecha_subida) 
+                    VALUES (?,?,?,?,?)";
+
+                    $stmt = $this->conn->prepare($sql);
+                    if ($stmt === false) {
+                        throw new RuntimeException($this->conn->error);
+                    }
+                    $stmt->bind_param("issss", $idPublicacion, $ruta, $nombre, $tipoArchivo, $fecha);
+                    if (!$stmt->execute()) {
+                        throw new RuntimeException($stmt->error);
+                    }
+                    $stmt->close();
+                }
+
+                $this->conn->commit();
+                return 0;
+
+            } catch (Throwable $e) {
+                //Todo o nada: se deshace la BD y se borran los archivos ya guardados
+                $this->conn->rollback();
+                $this->borrarArchivosFisicos($rutasSubidas);
+                error_log($e->getMessage());
+                return 3;
+            }
         }
 
         //Validaciones para POST
@@ -645,7 +702,12 @@
 
             $directorio = __DIR__ . '/../../../documentos/publicaciones/' . $subdirectorio;
 
-            // Crear directorio si no existe...
+            // Crear directorio si no existe
+            if (!is_dir($directorio)) {
+                if (!mkdir($directorio, 0755, true) && !is_dir($directorio)) {
+                    return false; // no se pudo crear el directorio
+                }
+            }
 
             $nombre = "documento_{$idPublicacion}_{$numero}_" . uniqid() . ".{$extension}";
 
@@ -660,6 +722,114 @@
             }
 
             return "documentos/publicaciones/" . $subdirectorio . $nombre;
+        }
+
+        //Nombre original del archivo, limpio y con el largo de la columna (255)
+        private function nombreOriginal($archivo, string $rutaRespaldo): string {
+            $nombre = (is_array($archivo) && is_string($archivo['name'] ?? null)) ? $archivo['name'] : '';
+
+            //Quitamos cualquier ruta y los caracteres de control
+            $nombre = basename(str_replace('\\', '/', $nombre));
+            $limpio = preg_replace('/[\x00-\x1F\x7F]/u', '', $nombre);
+            $nombre = trim($limpio ?? '');
+
+            //Si quedó vacío, usamos el nombre técnico
+            if ($nombre === '') {
+                return basename($rutaRespaldo);
+            }
+
+            //Recortamos conservando la extensión
+            if (mb_strlen($nombre) > 255) {
+                $extension = pathinfo($nombre, PATHINFO_EXTENSION);
+                $base = pathinfo($nombre, PATHINFO_FILENAME);
+                $nombre = mb_substr($base, 0, 255 - mb_strlen($extension) - 1) . '.' . $extension;
+            }
+
+            return $nombre;
+        }
+
+        // Leer rol de usuario
+        private function rolDeUsuario(int $usuario): ?string {
+            $sql = "SELECT r.nombre FROM usuarios u
+                    INNER JOIN roles r ON r.id_rol = u.id_rol
+                    WHERE u.id_usuario = ? AND u.bloqueo_usuario = 0";
+            $stmt = $this->conn->prepare($sql);
+            if ($stmt === false) {
+                throw new RuntimeException($this->conn->error);
+            }
+            $stmt->bind_param("i", $usuario);
+            $stmt->execute();
+            $fila = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            return $fila['nombre'] ?? null;
+        }
+
+        //Validar ventana de edicion
+        private function dentroDeVentanaEdicion(string $fecha): bool {
+            date_default_timezone_set('America/El_Salvador');
+            $limite = new DateTime($fecha);
+            $limite->modify('+1 hour');
+            return new DateTime() < $limite;
+        }
+
+        //Autoría: 0 = permitido | 1 = publicación no existe o bloqueada | 2 = usuario inválido | 3 = sin permiso
+        private function validarAutoria(int $id, int $usuario, bool $permitirAdmin): int {
+            $sql = "SELECT id_usuario FROM publicaciones WHERE id_publicacion = ? AND bloquear = 0";
+            $stmt = $this->conn->prepare($sql);
+            if ($stmt === false) {
+                throw new RuntimeException($this->conn->error);
+            }
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $fila = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+
+            if (!$fila) {
+                return 1;
+            }
+
+            $rol = $this->rolDeUsuario($usuario);
+            if ($rol === null) {
+                return 2;
+            }
+
+            if ((int)$fila['id_usuario'] === $usuario) {
+                return 0;
+            }
+            if ($permitirAdmin && $rol === 'ADMINISTRADOR') {
+                return 0;
+            }
+            return 3;
+        }
+
+        //Permisos para mostrar u ocultar botones en el detalle
+        public function permisosSobre(int $id, ?int $usuario): array {
+            $sin = ['puede_editar' => false, 'puede_eliminar' => false];
+            if ($usuario === null) {
+                return $sin;
+            }
+
+            $sql = "SELECT id_usuario, fecha FROM publicaciones WHERE id_publicacion = ? AND bloquear = 0";
+            $stmt = $this->conn->prepare($sql);
+            if ($stmt === false) {
+                throw new RuntimeException($this->conn->error);
+            }
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $fila = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+
+            $rol = $this->rolDeUsuario($usuario);
+            if (!$fila || $rol === null) {
+                return $sin;
+            }
+
+            $esDueno = (int)$fila['id_usuario'] === $usuario;
+
+            return [
+                'puede_editar'   => $esDueno && $this->dentroDeVentanaEdicion($fila['fecha']),
+                'puede_eliminar' => $esDueno || $rol === 'ADMINISTRADOR',
+            ];
         }
 
         private function archivosPorPosicion($id): array {
@@ -827,7 +997,7 @@
             $fila = $resultado->fetch_assoc();
             $puntos = $fila['puntos'];
 
-            $puntos = $puntos + 10;
+            $puntos = min($puntos + 10, 100);
 
             $sql = "UPDATE publicaciones SET puntos = ? WHERE id_publicacion = ?";
             $stmt = $this->conn->prepare($sql);
@@ -837,8 +1007,8 @@
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== PUT ==========
-        public function actualizarPublicacion($id, $titulo, $mensaje, $materia, $archivosNuevos, $posicionesEliminar){
-            $validacion = $this->validarPUT($id, $materia);
+        public function actualizarPublicacion($id, $titulo, $mensaje, $materia, $archivosNuevos, $posicionesEliminar, int $usuario){
+            $validacion = $this->validarPUT($id, $materia, $usuario);
 
             if($validacion !== 0){
                 return $validacion;
@@ -890,7 +1060,7 @@
 
                 // Archivos nuevos: reemplazan si la posición está ocupada, se agregan si está libre
                 foreach($rutasNuevas as $posicion => $ruta){
-                    $nombre = basename($ruta);
+                    $nombre = $this->nombreOriginal($archivosNuevos[$posicion] ?? null, $ruta);
                     $tipo = pathinfo($ruta, PATHINFO_EXTENSION);
 
                     if(isset($archivosActuales[$posicion])){
@@ -936,16 +1106,17 @@
         }
 
         //validaciones para PUT
-        public function validarPUT($id, $materia){
-            //validar si la id existe en la base de datos la ID
-           // La publicación debe existir y no estar bloqueada (y de paso traemos su fecha)
-            $sql = "SELECT fecha FROM publicaciones WHERE id_publicacion = ? AND bloquear = 0";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("i", $id);
-            $stmt->execute();
-            $fila = $stmt->get_result()->fetch_assoc();
-            if (!$fila) {
+        public function validarPUT($id, $materia, int $usuario){
+            //Solo el dueño edita
+            $autoria = $this->validarAutoria((int)$id, $usuario, false);
+            if ($autoria === 1) {
                 return 1;
+            }
+            if ($autoria === 2) {
+                return 6;
+            }
+            if ($autoria === 3) {
+                return 5;
             }
 
             // La materia debe existir
@@ -958,10 +1129,12 @@
             }
 
             // Solo se puede editar durante 1 hora después de publicar
-            date_default_timezone_set('America/El_Salvador');
-            $limite = new DateTime($fila['fecha']);
-            $limite->modify('+1 hour');
-            if (new DateTime() >= $limite) {
+            $sql = "SELECT fecha FROM publicaciones WHERE id_publicacion = ?";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $fila = $stmt->get_result()->fetch_assoc();
+            if (!$fila || !$this->dentroDeVentanaEdicion($fila['fecha'])) {
                 return 3;
             }
 
@@ -970,65 +1143,60 @@
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== DELETE ==========
-        public function eliminarPubliacion($id){
-            $validacion = $this->validarDELETE($id);
-            
+        public function eliminarPubliacion($id, int $usuario): int {
+            $validacion = $this->validarDELETE($id, $usuario);
+
             //si pasa todas las validaciones
-            if($validacion !== true){
+            if($validacion !== 0){
                 return $validacion;
             }
 
             $sql = "UPDATE publicaciones SET bloquear = 1 WHERE id_publicacion = ?";
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("i", $id); 
-            $stmt->execute();
+            if ($stmt === false) {
+                throw new RuntimeException($this->conn->error);
+            }
+            $stmt->bind_param("i", $id);
+            if (!$stmt->execute()) {
+                throw new RuntimeException($stmt->error);
+            }
+            $stmt->close();
 
-            return true;
+            return 0;
         }
 
-        //validaciones DELETE
-        public function validarDELETE($id){
-            $sql = "SELECT id_publicacion FROM publicaciones
-            WHERE id_publicacion = ? AND bloquear = 0";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("i", $id);
-            $stmt->execute();
-            if ($stmt->get_result()->num_rows === 0) {
-                return false;
-            }
-            return true;
+        //validaciones DELETE: autor/ administrador
+        public function validarDELETE($id, int $usuario): int {
+            return $this->validarAutoria((int)$id, $usuario, true);
         }
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== PATCH ==========
-        public function cambiarEstadoPublicacion($id, $estado){
-            $validacion = $this->validarPATCH($id);
-            
+        public function cambiarEstadoPublicacion($id, $estado, int $usuario): int {
+            $validacion = $this->validarPATCH($id, $usuario);
+
             //si pasa todas las validaciones
-            if($validacion !== true){
+            if($validacion !== 0){
                 return $validacion;
             }
 
             $sql = "UPDATE publicaciones SET estado = ? WHERE id_publicacion = ?";
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("si", $estado, $id); 
-            $stmt->execute();
+            if ($stmt === false) {
+                throw new RuntimeException($this->conn->error);
+            }
+            $stmt->bind_param("si", $estado, $id);
+            if (!$stmt->execute()) {
+                throw new RuntimeException($stmt->error);
+            }
+            $stmt->close();
 
-            return true;
+            return 0;
         }
 
-        //validaciones PATCH
-        public function validarPATCH($id){
-            //validar si la id existe en la base de datos la ID
-            $sql = "SELECT id_publicacion FROM publicaciones WHERE id_publicacion = ? AND bloquear = 0";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("i", $id); 
-            $stmt->execute();
-            if ($stmt->get_result()->num_rows == 0) {
-                return false;
-            }
-
-            return true;
+        //validaciones PATCH: autor / administrador
+        public function validarPATCH($id, int $usuario): int {
+            return $this->validarAutoria((int)$id, $usuario, true);
         }
 
     }

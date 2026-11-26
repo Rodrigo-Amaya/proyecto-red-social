@@ -101,12 +101,16 @@ function validarTrueOFalse(int $valor){
 }
 
 function validarDocumento($archivo) {
-    //Si hubo algun error a la hora de subir el archivo
-    if ($archivo['error'] !== UPLOAD_ERR_OK) {
+    // Debe ser un archivo subido normal
+    if (!is_array($archivo) || !isset($archivo['error'], $archivo['size'], $archivo['tmp_name'])) {
+        return false;
+    }
+    if (is_array($archivo['error']) || is_array($archivo['size']) || is_array($archivo['tmp_name'])) {
         return false;
     }
 
-    if (!is_array($archivo)) {
+    //Si hubo algun error a la hora de subir el archivo
+    if ($archivo['error'] !== UPLOAD_ERR_OK) {
         return false;
     }
 
@@ -140,6 +144,7 @@ function validarDocumento($archivo) {
         return false;
     }
     $tipo = finfo_file($finfo, $archivo['tmp_name']);
+    finfo_close($finfo);
 
     return $tiposPermitidos[$tipo] ?? false;
 }
