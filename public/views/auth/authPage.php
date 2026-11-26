@@ -34,8 +34,6 @@
                         <input type="password" name="contrasenaLogin" id="contrasenaLogin" class="inputContrasena" required><i class="bx bx-show" onclick="mostrarContrasena(this)"></i>
                     </div>
                     <br>
-                    <label id="olvidoContrasena">¿Olvidaste tu contraseña?</label>
-                    <br>
 
                     <h4 id="errorLogin"></h4>
 
@@ -58,39 +56,41 @@
             <!--REGISTRO-->
             <div class="contenedorElementos" id="registro">
                 <form id="formRegistro">
-                    <h1>Registro</h1>
-                    <p>Registrate para poder iniciar a colaborar y preguntar</p>
+                    <div class="camposRegistro">
+                        <h1>Registro</h1>
+                        <p>Registrate para poder iniciar a colaborar y preguntar</p>
 
-                    <label for="nombre">Nombre:</label>
-                    <div class="contenedorInputs">
-                        <input type="text" name="nombre" id="nombre" required>
+                        <label for="nombre">Nombre:</label>
+                        <div class="contenedorInputs">
+                            <input type="text" name="nombre" id="nombre" required>
+                        </div>
+                        <br>
+
+                        <label for="correo">Correo:</label>
+                        <div class="contenedorInputs">
+                            <input type="email" name="correo" id="correo" required>
+                        </div>
+                        <br>
+
+                        <label for="contrasena">Contraseña:</label>
+                        <div class="contenedorInputs">
+                            <input type="password" name="contrasena" id="contrasena" class="inputContrasena" required><i class="bx bx-show" onclick="mostrarContrasena(this)"></i>
+                        </div>
+                        <br>
+
+                        <label for="contrasenaValidar">Valide su contraseña:</label>
+                        <div class="contenedorInputs">
+                            <input type="password" name="contrasenaValidar" id="contrasenaValidar" class="inputContrasena" required><i class="bx bx-show" onclick="mostrarContrasena(this)"></i>
+                        </div>
+                        <br>
+
+                        <label for="nivelEstudio">Nivel de estudio:</label><br>
+                        <select id="nivelEstudio" name="nivelEstudio" required>
+                            <option value="">Seleccione un nivel educativo</option>
+                        </select>
+
+                        <h4 id="errorRegistro"></h4>
                     </div>
-                    <br>
-
-                    <label for="correo">Correo:</label>
-                    <div class="contenedorInputs">
-                        <input type="email" name="correo" id="correo" required>
-                    </div>
-                    <br>
-
-                    <label for="contrasena">Contraseña:</label>
-                    <div class="contenedorInputs">
-                        <input type="password" name="contrasena" id="contrasena" class="inputContrasena" required><i class="bx bx-show" onclick="mostrarContrasena(this)"></i>
-                    </div>
-                    <br>
-
-                    <label for="contrasenaValidar">Valide su contraseña:</label>
-                    <div class="contenedorInputs">
-                        <input type="password" name="contrasenaValidar" id="contrasenaValidar" class="inputContrasena" required><i class="bx bx-show" onclick="mostrarContrasena(this)"></i>
-                    </div>
-                    <br>
-
-                    <label for="nivelEstudio">Nivel de estudio:</label><br>
-                    <select id="nivelEstudio" name="nivelEstudio" required>
-                        <option value="">Seleccione un nivel educativo</option>
-                    </select>
-
-                    <h4 id="errorRegistro"></h4><br>
 
                     <button type="submit" class="btnSubmit">Registrarse</button>
                     <p class="cambioPanel">¿Ya tienes cuenta? <a href="#login" id="iniciarSesion">Inicia sesión</a></p>

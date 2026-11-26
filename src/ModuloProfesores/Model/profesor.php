@@ -1,4 +1,6 @@
 <?php 
+    require_once __DIR__ . '/notificacion.php';
+
     class Profesor {
         private mysqli $conn;
 
@@ -46,7 +48,7 @@
                 return null;
             }
 
-            $sql = "SELECT r.estapa_revision AS etapa, r.decision, r.comentario, r.fecha, u.nombre AS administrador
+            $sql = "SELECT r.etapa_revision AS etapa, r.decision, r.comentario, r.fecha, u.nombre AS administrador
             FROM revision_aplicacion_profesor r
             JOIN usuarios u ON r.id_administrador = u.id_usuario
             WHERE r.id_aplicacion = ?
@@ -138,9 +140,17 @@
                 $stmt = $this->conn->prepare($sql);
                 $stmt->bind_param("issssiss", $usuario, $universidad, $telefono, $carrera, $grado, $anio, $ruta, $primeraRevision);
                 $stmt->execute();
+                $idAplicacion = $this->conn->insert_id;
             } catch (mysqli_sql_exception $e) {
                 $this->borrarArchivoFisico($ruta);
                 return 4;
+            }
+
+            //Avisar a los administradores (si falla, la aplicacion ya quedo guardada)
+            try {
+                (new Notificacion($this->conn))->notificarNuevaSolicitud((int)$idAplicacion, (int)$usuario);
+            } catch (Throwable $e) {
+                error_log('No se pudo crear la notificación de solicitud: ' . $e->getMessage());
             }
 
             return 0;
@@ -299,6 +309,13 @@
             $stmt = $this->conn->prepare($sql);
             $stmt->bind_param("i", $id); 
             $stmt->execute();
+
+            //Ya no hay nada que revisar: se retira el aviso de los administradores
+            try {
+                (new Notificacion($this->conn))->retirarNuevaSolicitud((int)$id);
+            } catch (Throwable $e) {
+                error_log('No se pudo retirar la notificación de solicitud: ' . $e->getMessage());
+            }
 
             return true;
         }
