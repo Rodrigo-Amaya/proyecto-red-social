@@ -88,6 +88,7 @@ $publicaciones = $publicaciones ?? [];
             <section class="feed" id="feed"
                      data-api="<?= htmlspecialchars($baseUrl) ?>/api"
                      data-sesion="<?= $usuario ? '1' : '0' ?>"
+                     data-usuario="<?= $usuario ? (int)$usuario['id_usuario'] : 0 ?>"
                      data-login="<?= htmlspecialchars($baseUrl) ?>/index.php?page=login&amp;volver=inicio">
                 <div class="feed-vacio" id="feed-vacio" hidden>
                     <h2 id="feed-vacio-titulo"></h2>
@@ -134,5 +135,9 @@ $publicaciones = $publicaciones ?? [];
 
         </aside>
     </div>
+
+    <?php if ($usuario): ?>
+        <script src="<?= htmlspecialchars($baseUrl) ?>/public/js/notificaciones.js" defer></script>
+    <?php endif; ?>
 
 </section>

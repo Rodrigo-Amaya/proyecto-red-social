@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 24-11-2026 a las 06:38:19
+-- Tiempo de generación: 26-11-2026 a las 05:05:09
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -38,7 +38,7 @@ CREATE TABLE `aplicacion_profesor` (
   `url_titulo` varchar(500) NOT NULL,
   `estado` varchar(30) NOT NULL DEFAULT 'PENDIENTE',
   `fecha_aplicacion` datetime NOT NULL DEFAULT current_timestamp(),
-  `primera_revision_fecha` datetime NULL,
+  `primera_revision_fecha` datetime DEFAULT NULL,
   `segunda_revision_fecha` datetime DEFAULT NULL,
   `razon_rechazo` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -86,7 +86,7 @@ CREATE TABLE `comentarios` (
   `mensaje` text NOT NULL,
   `id_usuario` int(11) NOT NULL,
   `id_publicacion` int(11) NOT NULL,
-  `id_comentario_padre` int(11) NULL,
+  `id_comentario_padre` int(11) DEFAULT NULL,
   `bloquear` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -140,6 +140,23 @@ CREATE TABLE `nivel_estudio` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `notificaciones`
+--
+
+CREATE TABLE `notificaciones` (
+  `id_notificacion` int(11) NOT NULL,
+  `id_usuario` int(11) NOT NULL COMMENT 'destinatario',
+  `id_actor` int(11) NOT NULL COMMENT 'quien provoca la notificacion',
+  `tipo` varchar(30) NOT NULL COMMENT 'COMENTARIO | LIKE_COMENTARIO | NUEVA_SOLICITUD',
+  `id_referencia` int(11) NOT NULL COMMENT 'COMENTARIO/LIKE_COMENTARIO = id_comentario, NUEVA_SOLICITUD = id_aplicacion',
+  `id_publicacion` int(11) DEFAULT NULL,
+  `leida` tinyint(1) NOT NULL DEFAULT 0,
+  `fecha` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `palabras_clave`
 --
 
@@ -163,7 +180,7 @@ CREATE TABLE `publicaciones` (
   `puntos` int(11) NOT NULL DEFAULT 0,
   `id_usuario` int(11) NOT NULL,
   `id_materia` int(11) NOT NULL,
-  `estado` enum('SINRESOLVER', 'RESUELTA') NOT NULL DEFAULT 'SINRESOLVER',
+  `estado` enum('SINRESOLVER','RESUELTA') NOT NULL DEFAULT 'SINRESOLVER',
   `bloquear` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -176,7 +193,8 @@ CREATE TABLE `publicaciones` (
 CREATE TABLE `publicaciones_guardadas` (
   `id_guardado` int(11) NOT NULL,
   `id_usuario` int(11) NOT NULL,
-  `id_publicacion` int(11) NOT NULL
+  `id_publicacion` int(11) NOT NULL,
+  `fecha_guardado` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -235,7 +253,7 @@ CREATE TABLE `usuarios` (
   `fecha_registro` datetime NOT NULL DEFAULT current_timestamp(),
   `puntos` int(11) NOT NULL DEFAULT 0,
   `id_nivel` int(11) NOT NULL,
-  `url_foto` varchar(500) NULL,
+  `url_foto` varchar(500) DEFAULT NULL,
   `bloqueo_usuario` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -300,6 +318,15 @@ ALTER TABLE `materias`
 ALTER TABLE `nivel_estudio`
   ADD PRIMARY KEY (`id_nivel`),
   ADD UNIQUE KEY `nombre_nivel_unico` (`nombre`);
+
+--
+-- Indices de la tabla `notificaciones`
+--
+ALTER TABLE `notificaciones`
+  ADD PRIMARY KEY (`id_notificacion`),
+  ADD UNIQUE KEY `notificacion_unica` (`id_usuario`,`tipo`,`id_actor`,`id_referencia`),
+  ADD KEY `notificacion_usuario_idx` (`id_usuario`,`leida`,`id_notificacion`),
+  ADD KEY `notificacion_actor_fk` (`id_actor`);
 
 --
 -- Indices de la tabla `palabras_clave`
@@ -396,6 +423,12 @@ ALTER TABLE `nivel_estudio`
   MODIFY `id_nivel` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT de la tabla `notificaciones`
+--
+ALTER TABLE `notificaciones`
+  MODIFY `id_notificacion` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT de la tabla `palabras_clave`
 --
 ALTER TABLE `palabras_clave`
@@ -480,6 +513,13 @@ ALTER TABLE `likes_comentario`
 ALTER TABLE `likes_publicacion`
   ADD CONSTRAINT `likes_publicacion_fk` FOREIGN KEY (`id_publicacion`) REFERENCES `publicaciones` (`id_publicacion`),
   ADD CONSTRAINT `likes_publicacion_usuario_fk` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id_usuario`);
+
+--
+-- Filtros para la tabla `notificaciones`
+--
+ALTER TABLE `notificaciones`
+  ADD CONSTRAINT `notificacion_actor_fk` FOREIGN KEY (`id_actor`) REFERENCES `usuarios` (`id_usuario`) ON DELETE CASCADE,
+  ADD CONSTRAINT `notificacion_usuario_fk` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id_usuario`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `palabras_clave`

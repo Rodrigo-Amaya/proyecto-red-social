@@ -35,7 +35,8 @@ try {
         'niveles'  => fn() => new NivelEstudioController(new NivelEstudio($conn)),
         'publicaciones'  => fn() => new publicacionController(new publicacion($conn)),
         'profesores'  => fn() => new profesoresController(new profesor($conn)),
-        'materias'  => fn() => new materiaController(new materia($conn)),
+        'materias'  => fn() => new MateriaController(new Materia($conn)),
+        'notificaciones' => fn() => new NotificacionController(new Notificacion($conn)),
     ];
 
     $recurso = $partes[0] ?? '';

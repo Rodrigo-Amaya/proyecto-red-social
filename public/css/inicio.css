@@ -541,4 +541,11 @@ button {
 
 .publicacion-adjuntos-indicador:hover {
     text-decoration: underline;
+
+.btn-guardar.guardada {
+    color: var(--color-button);
+}
+
+.btn-guardar.guardada svg {
+    fill: currentColor;
 }

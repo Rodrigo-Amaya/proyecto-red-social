@@ -1,6 +1,11 @@
 <?php
 require_once __DIR__ . '/app/helpers/utilidades.php';
 
+// IDs de la tabla `roles` (los mismos de Profesor::ROL_PROFESOR y ROL_ADMIN).
+// Se definen aquí para que todas las vistas incluidas los compartan.
+const ROL_PROFESOR = 2;
+const ROL_ADMIN = 3;
+
 $baseUrl = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
 
 // Usuario de la sesión
@@ -14,7 +19,7 @@ if (isset($_COOKIE[session_name()])) {
 
         // Actualizar sesion
         $stmt = $conn->prepare(
-            "SELECT u.id_usuario, u.nombre, u.url_foto, r.nombre AS rol
+            "SELECT u.id_usuario, u.nombre, u.url_foto, u.id_rol, r.nombre AS rol
              FROM usuarios u
              INNER JOIN roles r ON r.id_rol = u.id_rol
              WHERE u.id_usuario = ? AND u.bloqueo_usuario = 0"
@@ -28,12 +33,15 @@ if (isset($_COOKIE[session_name()])) {
             $_SESSION = [];
             session_destroy();
         } else {
+            $usuario['id_rol'] = (int)$usuario['id_rol'];
             $_SESSION['rol'] = $usuario['rol']; // sesión se actualiza
+            $_SESSION['id_rol'] = $usuario['id_rol'];
         }
     }
 }
 
 // Navegacion entre paginas
+// 'admin' => true: solo administradores (se valida con el rol leído de la base)
 $pages = [
     'inicio'  => [
         'title' => 'Inicio',
@@ -70,6 +78,18 @@ $pages = [
         'view'  => '/public/views/publicaciones/detalle.php',
         'protegida' => false
     ],
+    'solicitudes' => [
+        'title' => 'Solicitudes de profesores',
+        'view'  => '/public/views/administrador/revisarSolicitud.php',
+        'protegida' => true,
+        'admin' => true
+    ],
+    'gestion-usuarios' => [
+        'title' => 'Gestión de usuarios',
+        'view'  => '/public/views/administrador/gestionUsuarios.php',
+        'protegida' => true,
+        'admin' => true
+    ],
 ];
 
 $page = $_GET['page'] ?? 'inicio';
@@ -89,6 +109,15 @@ if ($pages[$page]['protegida'] && $usuario === null) {
     exit;
 }
 
+// Paginas de administrador: solo rol administrador
+if (!empty($pages[$page]['admin']) && ($usuario['id_rol'] ?? 0) !== ROL_ADMIN) {
+    header('Location: index.php?page=inicio');
+    exit;
+}
+if (isset($_GET['debug'])) {
+    var_dump($page, $usuario['id_rol'] ?? null, ROL_ADMIN, is_file(__DIR__ . $pages[$page]['view']));
+    exit;
+}
 // Ya hay sesion cerrar login
 if ($page === 'login' && $usuario !== null) {
     header('Location: index.php?page=' . urlencode($volver));
