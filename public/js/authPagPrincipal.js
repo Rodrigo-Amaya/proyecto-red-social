@@ -41,13 +41,6 @@ window.addEventListener('hashchange', mostrarPanel);
 mostrarPanel();
 
 /*-----------------------------------------------------------------------------------------
-                                OLVIDO DE CONTRASEÑA
------------------------------------------------------------------------------------------*/
-document.getElementById('olvidoContrasena').addEventListener('click', function(){
-    window.location.href = "index.php?page=olvidarContrasena";
-});
-
-/*-----------------------------------------------------------------------------------------
                                 NIVELES DE ESTUDIO
 -----------------------------------------------------------------------------------------*/
 async function cargarNiveles(){

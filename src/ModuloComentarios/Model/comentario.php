@@ -1,4 +1,6 @@
 <?php 
+    require_once __DIR__ . '/notificacion.php';
+
     class Comentario {
         private mysqli $conn;
         
@@ -187,6 +189,14 @@
                 }
 
                 $this->conn->commit();
+
+                //Notificar al autor de la publicacion (si falla, el comentario ya quedo guardado)
+                try {
+                    (new Notificacion($this->conn))->notificarComentario($idComentario, $publicacion, $usuario);
+                } catch (Throwable $e) {
+                    error_log('No se pudo crear la notificación de comentario: ' . $e->getMessage());
+                }
+
                 return 0;
 
             } catch (Throwable $e) {
@@ -426,5 +436,82 @@
             }
 
             return true;
+        }
+
+        //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        //========== LIKES ==========
+        // 0 = ok | 1 = comentario no encontrado o bloqueado | 2 = usuario no encontrado o bloqueado | 3 = ya habia dado like
+        public function darLike(int $idComentario, int $idPublicacion, int $usuario): int {
+            if (!$this->buscarPorID($idComentario, $idPublicacion)) {
+                return 1;
+            }
+            if (!$this->usuarioActivo($usuario)) {
+                return 2;
+            }
+
+            date_default_timezone_set('America/El_Salvador');
+            $fecha = date('Y-m-d H:i:s');
+
+            $stmt = $this->conn->prepare("INSERT IGNORE INTO likes_comentario (id_usuario, id_comentario, fecha) VALUES (?,?,?)");
+            $stmt->bind_param("iis", $usuario, $idComentario, $fecha);
+            $stmt->execute();
+            $nuevo = $stmt->affected_rows > 0;
+            $stmt->close();
+
+            if (!$nuevo) {
+                return 3;
+            }
+
+            //Notificar al autor del comentario (si falla, el like ya quedo guardado)
+            try {
+                (new Notificacion($this->conn))->notificarLikeComentario($idComentario, $usuario);
+            } catch (Throwable $e) {
+                error_log('No se pudo crear la notificación de like: ' . $e->getMessage());
+            }
+
+            return 0;
+        }
+
+        // 0 = ok | 1 = comentario no encontrado o bloqueado | 3 = no habia dado like
+        public function quitarLike(int $idComentario, int $idPublicacion, int $usuario): int {
+            if (!$this->buscarPorID($idComentario, $idPublicacion)) {
+                return 1;
+            }
+
+            $stmt = $this->conn->prepare("DELETE FROM likes_comentario WHERE id_usuario = ? AND id_comentario = ?");
+            $stmt->bind_param("ii", $usuario, $idComentario);
+            $stmt->execute();
+            $borrado = $stmt->affected_rows > 0;
+            $stmt->close();
+
+            if (!$borrado) {
+                return 3;
+            }
+
+            try {
+                (new Notificacion($this->conn))->retirarLikeComentario($idComentario, $usuario);
+            } catch (Throwable $e) {
+                error_log('No se pudo retirar la notificación de like: ' . $e->getMessage());
+            }
+
+            return 0;
+        }
+
+        public function totalLikes(int $idComentario): int {
+            $stmt = $this->conn->prepare("SELECT COUNT(*) AS total FROM likes_comentario WHERE id_comentario = ?");
+            $stmt->bind_param("i", $idComentario);
+            $stmt->execute();
+            $total = (int)$stmt->get_result()->fetch_assoc()['total'];
+            $stmt->close();
+            return $total;
+        }
+
+        private function usuarioActivo(int $usuario): bool {
+            $stmt = $this->conn->prepare("SELECT id_usuario FROM usuarios WHERE id_usuario = ? AND bloqueo_usuario = 0");
+            $stmt->bind_param("i", $usuario);
+            $stmt->execute();
+            $existe = $stmt->get_result()->num_rows > 0;
+            $stmt->close();
+            return $existe;
         }
     }

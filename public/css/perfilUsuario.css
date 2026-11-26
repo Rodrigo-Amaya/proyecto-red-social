@@ -28,7 +28,7 @@
 /*-----------------------------------------------------------
                     HTML              
 -----------------------------------------------------------*/
-body {
+.main-content {
     display: grid; grid-template-columns: 300px 1fr;
     font-family: Arial, Helvetica, sans-serif;
     gap: 10px;
@@ -55,7 +55,7 @@ i {
     color: var(--texto-blanco);
 }
 #panelDatosBasicos{
-    max-height: fit-content;
+    max-height: fit-content; 
 }
 #panelActualizarInfo{
     background-color: var(--fondo-secundario);
@@ -79,6 +79,10 @@ i {
     width: 100vw; height: 100vmax;
     background-color: rgba(0, 0, 0, 0.25);
 }
+
+/*-----------------------------------------------------------
+                    FORMULARIO              
+-----------------------------------------------------------*/
 
 /*-----------------------------------------------------------
                     INPUTS, BOTONES              
@@ -135,6 +139,7 @@ button {
 #cerrarSesion{
     background-color: var(--color-error-fondo);
     color: var(--color-error-texto);
+    width: 100%;
 }
 
 #panelDatosBasicos img{
@@ -147,6 +152,14 @@ button {
 -----------------------------------------------------------*/
 p {
     margin: 0 0 20px 0;
+}
+
+#profesor{
+    color: var(--texto);
+    cursor: pointer;
+}
+#profesor:hover{
+    text-decoration: underline;
 }
 h2{
     margin: 0 0 5px 0;

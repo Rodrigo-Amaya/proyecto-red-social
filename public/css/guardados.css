@@ -1,0 +1,85 @@
+.page-header h1 {
+    color: var(--color-title);
+    font-size: var(--font-size-title);
+}
+
+.archivos-publicacion {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.archivo-enlace {
+    display: block;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-button);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.archivo-enlace:hover {
+    background-color: var(--color-bg-links);
+}
+
+.publicacion-likes,
+.comentario-likes {
+    color: var(--color-subtext);
+    font-size: var(--font-size-note);
+    margin-top: 12px;
+}
+
+.comentarios-guardados {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid var(--color-border);
+}
+
+.comentarios-guardados h3 {
+    margin-bottom: 15px;
+}
+
+.comentario-guardado {
+    padding: 12px;
+    margin-top: 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+}
+
+.comentario-autor {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.comentario-autor small {
+    color: var(--color-subtext);
+}
+
+.comentario-mensaje {
+    line-height: 1.5;
+}
+
+.respuestas-guardadas {
+    margin-top: 12px;
+    margin-left: 20px;
+    padding-left: 12px;
+    border-left: 2px solid var(--color-border);
+}
+
+.btn-quitar-guardado {
+    background-color: var(--color-button);
+    color: white;
+}
+
+.btn-quitar-guardado:hover {
+    opacity: 0.85;
+}
+
+.btn-quitar-guardado:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}

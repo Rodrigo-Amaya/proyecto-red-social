@@ -13,6 +13,9 @@ $baseUrl = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
     <link rel="stylesheet" href="<?= $baseUrl ?>/public/css/inicio.css">
     <link rel="stylesheet" href="<?= $baseUrl ?>/public/css/pages.css">
 
+    <?php if ($currentPage === 'guardados'): ?>
+        <link rel="stylesheet" href="<?= $baseUrl ?>/public/css/guardados.css">
+    <?php endif; ?>
 </head>
 <body>
     <?php if (!in_array($currentPage, ['login', 'perfil'], true)): ?>
@@ -25,6 +28,8 @@ $baseUrl = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
 
     <?php if ($currentPage === 'inicio'): ?>
         <script src="<?= $baseUrl ?>/public/js/inicio.js"></script>
+    <?php elseif ($currentPage === 'guardados'): ?>
+        <script src="<?= $baseUrl ?>/public/js/guardados.js"></script>
     <?php endif; ?>
 </body>
 </html>

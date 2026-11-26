@@ -174,6 +174,368 @@
         }
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        //========== PUBLICACIONES GUARDADAS ==========
+
+        // Validar que el usuario exista y no esté bloqueado
+        private function usuarioActivo(int $idUsuario): bool {
+            $sql = "SELECT id_usuario
+                    FROM usuarios
+                    WHERE id_usuario = ? AND bloqueo_usuario = 0";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("i", $idUsuario);
+            $stmt->execute();
+
+            $existe = $stmt->get_result()->num_rows > 0;
+            $stmt->close();
+
+            return $existe;
+        }
+
+
+        // Guardar una publicación
+        public function guardarPublicacion(int $idUsuario, int $idPublicacion): int {
+
+            // Validar usuario
+            if (!$this->usuarioActivo($idUsuario)) {
+                return 1;
+            }
+
+            // Validar publicación
+            $sql = "SELECT id_publicacion
+                    FROM publicaciones
+                    WHERE id_publicacion = ? AND bloquear = 0";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("i", $idPublicacion);
+            $stmt->execute();
+
+            $existe = $stmt->get_result()->num_rows > 0;
+            $stmt->close();
+
+            if (!$existe) {
+                return 2;
+            }
+
+            // Registrar publicación guardada
+            $sql = "INSERT IGNORE INTO publicaciones_guardadas
+                    (id_usuario, id_publicacion, fecha_guardado)
+                    VALUES (?, ?, NOW())";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("ii", $idUsuario, $idPublicacion);
+            $stmt->execute();
+
+            $insertado = $stmt->affected_rows > 0;
+            $stmt->close();
+
+            // Si no se insertó, probablemente ya estaba guardada
+            if (!$insertado) {
+                return 3;
+            }
+
+            return 0;
+        }
+
+
+        // Quitar una publicación de guardados
+        public function quitarPublicacionGuardada(int $idUsuario, int $idPublicacion): int {
+
+            if (!$this->usuarioActivo($idUsuario)) {
+                return 1;
+            }
+
+            $sql = "DELETE FROM publicaciones_guardadas
+                    WHERE id_usuario = ? AND id_publicacion = ?";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("ii", $idUsuario, $idPublicacion);
+            $stmt->execute();
+
+            $eliminado = $stmt->affected_rows > 0;
+            $stmt->close();
+
+            if (!$eliminado) {
+                return 2;
+            }
+
+            return 0;
+        }
+
+
+        // Obtener todas las publicaciones guardadas por un usuario
+        public function publicacionesGuardadas(int $idUsuario): array|false {
+
+            if (!$this->usuarioActivo($idUsuario)) {
+                return false;
+            }
+
+            $sql = "SELECT
+                        p.id_publicacion,
+                        p.titulo,
+                        p.fecha,
+                        p.mensaje,
+                        p.puntos,
+                        p.id_usuario,
+                        p.id_materia,
+                        p.estado,
+
+                        u.nombre AS autor,
+                        u.url_foto,
+                        n.nombre AS nivel,
+                        m.nombre AS materia,
+
+                        pg.fecha_guardado,
+
+                        (SELECT COUNT(*)
+                        FROM likes_publicacion lp
+                        WHERE lp.id_publicacion = p.id_publicacion) AS total_likes,
+
+                        EXISTS(
+                            SELECT 1
+                            FROM likes_publicacion lp
+                            WHERE lp.id_publicacion = p.id_publicacion
+                            AND lp.id_usuario = ?
+                        ) AS usuario_dio_like
+
+                    FROM publicaciones_guardadas pg
+
+                    INNER JOIN publicaciones p
+                        ON p.id_publicacion = pg.id_publicacion
+
+                    INNER JOIN usuarios u
+                        ON u.id_usuario = p.id_usuario
+
+                    INNER JOIN nivel_estudio n
+                        ON n.id_nivel = u.id_nivel
+
+                    INNER JOIN materias m
+                        ON m.id_materia = p.id_materia
+
+                    WHERE pg.id_usuario = ?
+                    AND p.bloquear = 0
+                    AND u.bloqueo_usuario = 0
+
+                    ORDER BY pg.fecha_guardado DESC, pg.id_guardado DESC";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("ii", $idUsuario, $idUsuario);
+            $stmt->execute();
+
+            $publicaciones = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+
+            // Completar la información de cada publicación
+            foreach ($publicaciones as &$publicacion) {
+
+                $idPublicacion = (int)$publicacion['id_publicacion'];
+
+                $publicacion['total_likes'] = (int)$publicacion['total_likes'];
+                $publicacion['usuario_dio_like'] = (bool)$publicacion['usuario_dio_like'];
+
+                // Documentos de la publicación
+                $publicacion['documentos'] =
+                    $this->obtenerArchivosPublicacion($idPublicacion);
+
+                // Comentarios, respuestas, documentos y likes
+                $comentarios = $this->comentariosCompletos(
+                    $idPublicacion,
+                    $idUsuario
+                );
+
+                $publicacion['comentarios'] =
+                    $this->construirArbolComentarios($comentarios);
+            }
+
+            unset($publicacion);
+
+            return $publicaciones;
+        }
+
+
+        // Obtener documentos de una publicación
+        private function obtenerArchivosPublicacion(int $idPublicacion): array {
+
+            $sql = "SELECT
+                        id_archivo,
+                        url_archivo,
+                        nombre_archivo,
+                        tipo_archivo,
+                        fecha_subida
+                    FROM archivos_publicaciones
+                    WHERE id_publicacion = ?
+                    ORDER BY id_archivo ASC";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("i", $idPublicacion);
+            $stmt->execute();
+
+            $archivos = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+
+            return $archivos;
+        }
+
+
+        // Obtener comentarios completos de una publicación
+        private function comentariosCompletos(
+            int $idPublicacion,
+            int $idUsuario
+        ): array {
+
+            $sql = "SELECT
+                        c.id_comentario,
+                        c.titulo,
+                        c.fecha,
+                        c.mensaje,
+                        c.id_usuario,
+                        c.id_publicacion,
+                        c.id_comentario_padre,
+
+                        u.nombre AS autor,
+                        u.url_foto,
+
+                        (SELECT COUNT(*)
+                        FROM likes_comentario lc
+                        WHERE lc.id_comentario = c.id_comentario) AS total_likes,
+
+                        EXISTS(
+                            SELECT 1
+                            FROM likes_comentario lc
+                            WHERE lc.id_comentario = c.id_comentario
+                            AND lc.id_usuario = ?
+                        ) AS usuario_dio_like
+
+                    FROM comentarios c
+
+                    INNER JOIN usuarios u
+                        ON u.id_usuario = c.id_usuario
+
+                    WHERE c.id_publicacion = ?
+                    AND c.bloquear = 0
+
+                    ORDER BY c.fecha ASC, c.id_comentario ASC";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("ii", $idUsuario, $idPublicacion);
+            $stmt->execute();
+
+            $comentarios = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+
+            if (empty($comentarios)) {
+                return [];
+            }
+
+            // Obtener los ID de los comentarios
+            $ids = array_map(
+                fn($comentario) => (int)$comentario['id_comentario'],
+                $comentarios
+            );
+
+            // Consultar todos los archivos de los comentarios en una sola consulta
+            $marcadores = implode(',', array_fill(0, count($ids), '?'));
+
+            $sql = "SELECT
+                        id_archivo,
+                        id_comentario,
+                        url_archivo,
+                        nombre_archivo,
+                        tipo_archivo,
+                        fecha_subida
+                    FROM archivos_comentarios
+                    WHERE id_comentario IN ($marcadores)
+                    ORDER BY id_archivo ASC";
+
+            $stmt = $this->conn->prepare($sql);
+
+            $tipos = str_repeat('i', count($ids));
+            $stmt->bind_param($tipos, ...$ids);
+            $stmt->execute();
+
+            $archivos = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+
+            // Agrupar los archivos por comentario
+            $archivosPorComentario = [];
+
+            foreach ($archivos as $archivo) {
+                $idComentario = (int)$archivo['id_comentario'];
+
+                $archivosPorComentario[$idComentario][] = $archivo;
+            }
+
+            // Incorporar archivos y convertir los valores numéricos
+            $idsPresentes = array_fill_keys($ids, true);
+
+            foreach ($comentarios as &$comentario) {
+
+                $idComentario = (int)$comentario['id_comentario'];
+
+                $comentario['total_likes'] = (int)$comentario['total_likes'];
+                $comentario['usuario_dio_like'] = (bool)$comentario['usuario_dio_like'];
+
+                $comentario['documentos'] =
+                    $archivosPorComentario[$idComentario] ?? [];
+
+                // Si el comentario padre está bloqueado o no aparece,
+                // se considera este comentario como raíz.
+                if (
+                    $comentario['id_comentario_padre'] !== null &&
+                    !isset($idsPresentes[(int)$comentario['id_comentario_padre']])
+                ) {
+                    $comentario['id_comentario_padre'] = null;
+                }
+            }
+
+            unset($comentario);
+
+            return $comentarios;
+        }
+
+
+        // Organizar los comentarios y sus respuestas
+        private function construirArbolComentarios(
+            array $comentarios,
+            ?int $idPadre = null
+        ): array {
+
+            $resultado = [];
+
+            foreach ($comentarios as $comentario) {
+
+                $padre = $comentario['id_comentario_padre'];
+
+                if ($padre === null && $idPadre === null) {
+
+                    $comentario['respuestas'] =
+                        $this->construirArbolComentarios(
+                            $comentarios,
+                            (int)$comentario['id_comentario']
+                        );
+
+                    $resultado[] = $comentario;
+                }
+                else if (
+                    $padre !== null &&
+                    $idPadre !== null &&
+                    (int)$padre === $idPadre
+                ) {
+
+                    $comentario['respuestas'] =
+                        $this->construirArbolComentarios(
+                            $comentarios,
+                            (int)$comentario['id_comentario']
+                        );
+
+                    $resultado[] = $comentario;
+                }
+            }
+
+            return $resultado;
+        }
+
+        //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== POST ==========
         public function hacerPublicacion($titulo, $mensaje, $usuario, $materia, $archivo1, $archivo2, $archivo3, $extenciones){
             $validacion = $this->validarPOST($usuario, $materia);

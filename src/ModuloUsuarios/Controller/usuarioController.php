@@ -22,6 +22,15 @@
                     return;
                 }
 
+                // url: usuarios/gestion (solo administradores)
+                if($parte === "gestion"){
+                    match ($metodo){
+                        'GET'    => $this->gestionarUsuarios(),
+                        default  => noPermitido(),
+                    };
+                    return;
+                }
+
                 if($parte === "reseteoContrasena"){
                     match ($metodo){
                         'POST'    => $this->resetearContrasena(),
@@ -136,6 +145,34 @@
                 else{
                     respuesta(200, ['success' => true, 'Usuarios' => '']);
                 }
+            }
+
+            //Listado para el panel de administracion (incluye bloqueados, id y rol)
+            function gestionarUsuarios(): void{
+                $this->exigirAdministrador();
+
+                $busqueda = trim($_GET["busqueda"] ?? '');
+                $rol = trim($_GET["rol"] ?? '');
+                $bloqueado = trim($_GET["bloqueado"] ?? '');
+                $orden = strtoupper(trim($_GET["orden"] ?? ''));
+
+                if($rol !== '' && !ctype_digit($rol)){
+                    respuesta(400, ['success' => false, 'Mensaje' => 'Rol inválido']);
+                }
+                if($bloqueado !== '' && $bloqueado !== '0' && $bloqueado !== '1'){
+                    respuesta(400, ['success' => false, 'Mensaje' => 'Valor de bloqueo inválido']);
+                }
+                if($orden !== '' && $orden !== 'ASC' && $orden !== 'DESC'){
+                    respuesta(400, ['success' => false, 'Mensaje' => 'Tipo de orden inválido']);
+                }
+
+                $usuarios = $this->modelo->buscarParaAdministracion($busqueda, $rol, $bloqueado, $orden);
+
+                respuesta(200, [
+                    'success'  => true,
+                    'Usuarios' => $usuarios,
+                    'Roles'    => $this->modelo->listarRoles()
+                ]);
             }
 
             //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -334,8 +371,26 @@
             }
 
             //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            //========== AUXILIARES ==========
+
+            //Exige sesion de un administrador (se valida contra la base) y devuelve su id
+            private function exigirAdministrador(): int {
+                $idSesion = usuarioActual();
+                if (!$this->modelo->esAdministrador($idSesion)) {
+                    respuesta(403, ['success' => false, 'Mensaje' => 'No tiene permisos de administrador']);
+                }
+                return $idSesion;
+            }
+
+            //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             //========== DELETE ==========
             function eliminarUsuario(int $id): void {
+                //Solo el propio usuario o un administrador pueden darlo de baja
+                $idSesion = usuarioActual();
+                if ($idSesion !== $id && !$this->modelo->esAdministrador($idSesion)) {
+                    respuesta(403, ['success' => false, 'Mensaje' => 'No tiene permisos para esta acción']);
+                }
+
                 $resultado = $this->modelo->eliminarUsuario(
                     $id
                 );
@@ -352,8 +407,34 @@
 
             //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             //========== PATCH ==========
+            //Body JSON: {"rol": 2}  o  {"bloqueo": 1} (1 = bloquear, 0 = desbloquear)
             function cambiarRolUsuario(int $id): void {
+                $idAdmin = $this->exigirAdministrador();
                 $datos = leerJson();
+
+                //Bloquear o desbloquear
+                if (array_key_exists('bloqueo', $datos)) {
+                    $bloqueo = $datos['bloqueo'];
+
+                    if (!in_array($bloqueo, [0, 1, '0', '1'], true)) {
+                        respuesta(400, ['success' => false, 'Mensaje' => 'Valor de bloqueo inválido']);
+                    }
+                    if ($id === $idAdmin) {
+                        respuesta(409, ['success' => false, 'Mensaje' => 'No puede bloquear su propia cuenta']);
+                    }
+
+                    $resultado = $this->modelo->cambiarBloqueo($id, (int)$bloqueo);
+
+                    if ($resultado === 1) {
+                        respuesta(404, ['success' => false, 'Mensaje' => 'Usuario no encontrado']);
+                    }
+                    respuesta(200, ['success' => true, 'Mensaje' => ((int)$bloqueo === 1) ? 'Usuario bloqueado correctamente' : 'Usuario desbloqueado correctamente']);
+                }
+
+                //Cambio de rol
+                if ($id === $idAdmin) {
+                    respuesta(409, ['success' => false, 'Mensaje' => 'No puede cambiar su propio rol']);
+                }
 
                 $rol = $datos['rol'] ?? '';
 

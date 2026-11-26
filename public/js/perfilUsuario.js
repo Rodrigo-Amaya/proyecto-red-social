@@ -7,12 +7,16 @@ function cerrarPanelFoto(){
     document.getElementById("opacidad").style.display = "none";
 }
 
-function irASolicitudes(){
-    window.location.href = '../administrador/revisarSolicitud.php';
+function irASolicitudes(base){
+    window.location.href = base+'/public/views/administrador/revisarSolicitud.php';
 }
 
-function quieroSerProfesor(){
-    window.location.href = '../profesores/aplicacionProfesor.php';
+function quieroSerProfesor(base){
+    window.location.href = base+'/public/views/profesores/aplicacionProfesor.php';
+}
+
+function regresar(enlace){
+    window.location.href = enlace;
 }
 
 /*-----------------------------------------------------------------------------------------
