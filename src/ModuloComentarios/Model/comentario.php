@@ -149,6 +149,9 @@
                         ];
                     }
 
+                    // Solo para mostrar u ocultar el botón Editar
+                    $fila['editable'] = !$fila['eliminado'] && $this->dentroDeVentanaEdicion($fila['fecha']);
+
                     $fila['respuestas'] = $respuestas;
                     $nodos[] = $fila;
                 }
@@ -393,10 +396,19 @@
             return 0;
         }
 
+        // Validar tiempo de venta de edicion
+        private function dentroDeVentanaEdicion(string $fecha): bool
+        {
+            date_default_timezone_set('America/El_Salvador');
+            $limite = new DateTime($fecha);
+            $limite->modify('+1 hour');
+            return new DateTime() < $limite;
+        }
+
         //validaciones para PUT
         public function validarPUT($idComentario, $usuario){
             // 1. Comentario existe y no bloqueado
-            $sql = "SELECT id_usuario FROM comentarios WHERE id_comentario = ? AND bloquear = 0";
+            $sql = "SELECT id_usuario, fecha FROM comentarios WHERE id_comentario = ? AND bloquear = 0";
             $stmt = $this->conn->prepare($sql);
             if ($stmt === false) {
                 throw new RuntimeException($this->conn->error);
@@ -428,6 +440,11 @@
             // 3. ¿Es el dueño del comentario?
             if ((int)$comentario['id_usuario'] !== (int)$usuario) {
                 return 3; // no es el dueño
+            }
+
+            // 4. Solo se puede editar durante 1 hora después de comentar
+            if (!$this->dentroDeVentanaEdicion($comentario['fecha'])) {
+                return 4; // pasó la hora
             }
 
             return 0;

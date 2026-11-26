@@ -242,6 +242,7 @@
                 1 => [404, 'Comentario no encontrado o bloqueado'],
                 2 => [404, 'Usuario no encontrado o bloqueado'],
                 3 => [403, 'No tienes permiso para modificar este comentario'],
+                4 => [403, 'Ya no se puede modificar el comentario'],
                 5 => [400, 'El mensaje es obligatorio'],
                 6 => [400, 'El título o el mensaje superan la longitud permitida'],
             ];

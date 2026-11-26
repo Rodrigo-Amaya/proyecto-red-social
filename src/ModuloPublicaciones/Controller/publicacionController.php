@@ -94,8 +94,14 @@
 
                 //Sino hay resultado
                 if (!$resultado) {
-                    respuesta(404, ['success' => false,'mensaje' => 'Publicacion no encontrada o bloqueada']); // CORREGIDO: concordancia
+                    respuesta(404, ['success' => false,'mensaje' => 'Publicacion no encontrada o bloqueada']);
                 }
+
+                //Permisos solo para mostrar u ocultar botones (la ruta es pública)
+                $usuario  = isset($_SESSION['id_usuario']) ? (int)$_SESSION['id_usuario'] : null;
+                $permisos = $this->modelo->permisosSobre($id, $usuario);
+                $resultado['puede_editar']   = $permisos['puede_editar'];
+                $resultado['puede_eliminar'] = $permisos['puede_eliminar'];
 
                 respuesta(200, [
                     'success' => true,
@@ -182,50 +188,64 @@
             //========== POST ==========
             function ingresarNuevaPublicacion(): void {
 
-                $titulo = $_POST["titulo"] ?? '';
+                $usuario = usuarioActual();
+
+                $titulo  = $_POST["titulo"] ?? '';
                 $mensaje = $_POST["mensaje"] ?? '';
-                $usuario = $_POST["id_usuario"] ?? '';
                 $materia = $_POST["id_materia"] ?? '';
-                $archivo1 = $_FILES["archivo_1"] ?? NULL;
-                $archivo2 = $_FILES["archivo_2"] ?? NULL;
-                $archivo3 = $_FILES["archivo_3"] ?? NULL;
-                $archivos = [$archivo1, $archivo2, $archivo3];
+
+                //Los datos deben ser texto (si llegan como arreglo, es una peticion invalida)
+                if (!is_string($titulo) || !is_string($mensaje) || !is_string($materia)) {
+                    respuesta(400, ['success' => false, 'mensaje' => 'Los datos enviados no son válidos']);
+                }
+
+                $titulo  = trim($titulo);
+                $mensaje = trim($mensaje);
+                $materia = trim($materia);
 
                 //Si alguno de los campos ingresados esta vacio
-                if ( $titulo === '' || $mensaje === '' || $usuario === '' || $materia === '') {
-                    respuesta(400, ['success' => false, 'mensaje' => 'Todos los campos son abligatorios']);
+                if ($titulo === '' || $mensaje === '' || $materia === '') {
+                    respuesta(400, ['success' => false, 'mensaje' => 'Título, mensaje y materia son obligatorios']);
                 }
 
-                //Que el titulo no se amayor a 100 caracteres
-                if(str_word_count($titulo) > 100){
-                    respuesta(400, ['success' => false, 'mensaje' => 'Titulo muy largo']);
+                //Límites por caracteres (coinciden con la columna del titulo)
+                if (mb_strlen($titulo) > 200) {
+                    respuesta(400, ['success' => false, 'mensaje' => 'El título no puede superar los 200 caracteres']);
                 }
 
-                //Que el mensaje no se amayor a 500 caracteres
-                if(str_word_count($mensaje) > 500){
-                    respuesta(400, ['success' => false, 'mensaje' => 'Mensaje muy largo']);
+                if (mb_strlen($mensaje) > 5000) {
+                    respuesta(400, ['success' => false, 'mensaje' => 'El mensaje no puede superar los 5000 caracteres']);
                 }
 
-                //Que el usuario no sea texto
-                validarCampoEntero($usuario);
+                //Que la materia sea un numero entero valido
+                $materia = validarCampoEntero($materia);
 
-                //Que la materia no sea texto
-                validarCampoEntero($materia);
-
+                //Archivos adjuntos (maximo 3)
+                $archivos    = [];
                 $extensiones = [];
 
-                //Para los archivos
-                foreach($archivos as $archivo){
-                    if($archivo === NULL){
+                for ($n = 1; $n <= 3; $n++) {
+                    $archivo = $_FILES["archivo_$n"] ?? null;
+
+                    //Sin archivo en esta posicion
+                    if ($archivo === null || (!is_array($archivo['error'] ?? null) && ($archivo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE)) {
+                        $archivos[]    = null;
                         $extensiones[] = null;
                         continue;
                     }
-                    $extension = validarDocumento($archivo);
 
-                    if($extension === false){
-                        respuesta(400, ['success' => false, 'mensaje' => 'Tipo de archivo no es valido o esta corrupto']);
+                    //Archivo mayor al limite del servidor
+                    if (!is_array($archivo['error']) && in_array($archivo['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
+                        respuesta(400, ['success' => false, 'mensaje' => "El archivo_$n es demasiado grande"]);
                     }
 
+                    $extension = validarDocumento($archivo);
+
+                    if ($extension === false) {
+                        respuesta(400, ['success' => false, 'mensaje' => "El archivo_$n no es válido, supera los 10 MB o está corrupto"]);
+                    }
+
+                    $archivos[]    = $archivo;
                     $extensiones[] = $extension;
                 }
 
@@ -234,60 +254,80 @@
                     $mensaje,
                     $usuario,
                     $materia,
-                    $archivo1,
-                    $archivo2,
-                    $archivo3,
+                    $archivos[0],
+                    $archivos[1],
+                    $archivos[2],
                     $extensiones
                 );
 
                 //Respuesta obtenida
-                if($resultado === 1){
-                    respuesta(409, ['success' => false, 'mensaje' => 'Usuario no encontrado o bloqueado']);
-                }
-                else if($resultado === 2){
-                    respuesta(400, ['success' => false, 'mensaje' => 'Materia no encontrada']);
-                }
-                else if ($resultado === 3) {
-                    respuesta(500, ['success' => false, 'mensaje' => 'Error al guardar los documentos']);
-                }
-                else{
-                    respuesta(201, ['success' => true, 'mensaje' => 'Se realizo la publicacion con exito']);
-                }
+                match ($resultado) {
+                    0       => respuesta(201, ['success' => true, 'mensaje' => 'Se realizó la publicación con éxito']),
+                    1       => respuesta(404, ['success' => false, 'mensaje' => 'Usuario no encontrado o bloqueado']),
+                    2       => respuesta(400, ['success' => false, 'mensaje' => 'Materia no encontrada']),
+                    3       => respuesta(500, ['success' => false, 'mensaje' => 'Error al guardar la publicación o los documentos']),
+                    default => respuesta(500, ['success' => false, 'mensaje' => 'Error inesperado al publicar']),
+                };
             }
 
             //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             //========== PUT ==========
             //Agregar psoteriormente actualización por medio se session no por ID
             function actualizarPublicacion(int $id): void {
-                $titulo  = trim($_POST['titulo'] ?? '');
-                $mensaje = trim($_POST['mensaje'] ?? '');
-                $materia = trim($_POST['id_materia'] ?? '');
-                
+                $usuario = usuarioActual();
+
+                $titulo  = $_POST['titulo'] ?? '';
+                $mensaje = $_POST['mensaje'] ?? '';
+                $materia = $_POST['id_materia'] ?? '';
+
+                //Los datos deben ser texto (si llegan como arreglo, es una peticion invalida)
+                if (!is_string($titulo) || !is_string($mensaje) || !is_string($materia)) {
+                    respuesta(400, ['success' => false, 'mensaje' => 'Los datos enviados no son válidos']);
+                }
+
+                $titulo  = trim($titulo);
+                $mensaje = trim($mensaje);
+                $materia = trim($materia);
+
                 //Si alguno de los campos ingresados esta vacio
-                if ( $titulo === '' || $mensaje === '' || $materia === '') {
-                    respuesta(400, ['success' => false, 'mensaje' => 'Titulo, mensaje y materia son obligatorios']);
+                if ($titulo === '' || $mensaje === '' || $materia === '') {
+                    respuesta(400, ['success' => false, 'mensaje' => 'Título, mensaje y materia son obligatorios']);
                 }
 
-                if (str_word_count($titulo) > 100) {
-                    respuesta(400, ['success' => false, 'mensaje' => 'Titulo muy largo']);
+                //Límites por caracteres (iguales a los del POST)
+                if (mb_strlen($titulo) > 200) {
+                    respuesta(400, ['success' => false, 'mensaje' => 'El título no puede superar los 200 caracteres']);
                 }
 
-                if (str_word_count($mensaje) > 500) {
-                    respuesta(400, ['success' => false, 'mensaje' => 'Mensaje muy largo']);
+                if (mb_strlen($mensaje) > 5000) {
+                    respuesta(400, ['success' => false, 'mensaje' => 'El mensaje no puede superar los 5000 caracteres']);
                 }
 
-                validarCampoEntero($materia);
+                $materia = validarCampoEntero($materia);
 
-                $archivosNuevos = [];   // posicion => archivo subido
+                $archivosNuevos = [];     // posicion => archivo subido
                 $posicionesEliminar = []; // posiciones a borrar
 
                 for ($n = 1; $n <= 3; $n++) {
                     $archivo = $_FILES["archivo_$n"] ?? null;
 
+                    if ($archivo !== null) {
+                        //Un arreglo anidado (archivo_1[]) no es una subida valida
+                        if (is_array($archivo['error'] ?? null)) {
+                            respuesta(400, ['success' => false, 'mensaje' => "El archivo_$n no es válido"]);
+                        }
+                        $error = $archivo['error'] ?? UPLOAD_ERR_NO_FILE;
+                    } else {
+                        $error = UPLOAD_ERR_NO_FILE;
+                    }
+
                     // Se subió un archivo en esta posición: se valida ANTES de tocar nada
-                    if ($archivo !== null && $archivo['error'] !== UPLOAD_ERR_NO_FILE) {
+                    if ($error !== UPLOAD_ERR_NO_FILE) {
+                        if (in_array($error, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
+                            respuesta(400, ['success' => false, 'mensaje' => "El archivo_$n es demasiado grande"]);
+                        }
                         if (validarDocumento($archivo) === false) {
-                            respuesta(400, ['success' => false, 'mensaje' => "El archivo_$n no es valido o esta corrupto"]);
+                            respuesta(400, ['success' => false, 'mensaje' => "El archivo_$n no es válido, supera los 10 MB o está corrupto"]);
                         }
                         $archivosNuevos[$n] = $archivo;
                     }
@@ -303,71 +343,67 @@
                     $mensaje,
                     $materia,
                     $archivosNuevos,
-                    $posicionesEliminar
+                    $posicionesEliminar,
+                    $usuario
                 );
 
-                switch ($resultado) {
-                    case 1:
-                        respuesta(404, ['success' => false, 'mensaje' => 'Publicación no encontrada o bloqueada']);
-                        break;
-                    case 2:
-                        respuesta(400, ['success' => false, 'mensaje' => 'No se encontro la materia']);
-                        break;
-                    case 3:
-                        respuesta(403, ['success' => false, 'mensaje' => 'Ya no se puede modificar la publicación']);
-                        break;
-                    case 4:
-                        respuesta(500, ['success' => false, 'mensaje' => 'Error al guardar los cambios o los documentos']);
-                        break;
-                    default:
-                        respuesta(200, ['success' => true, 'mensaje' => 'Publicación actualizada correctamente']);
-                }
+                match ($resultado) {
+                    0       => respuesta(200, ['success' => true, 'mensaje' => 'Publicación actualizada correctamente']),
+                    1       => respuesta(404, ['success' => false, 'mensaje' => 'Publicación no encontrada o bloqueada']),
+                    2       => respuesta(400, ['success' => false, 'mensaje' => 'No se encontró la materia']),
+                    3       => respuesta(403, ['success' => false, 'mensaje' => 'Ya no se puede modificar la publicación']),
+                    4       => respuesta(500, ['success' => false, 'mensaje' => 'Error al guardar los cambios o los documentos']),
+                    5       => respuesta(403, ['success' => false, 'mensaje' => 'No tienes permiso para modificar esta publicación']),
+                    6       => respuesta(404, ['success' => false, 'mensaje' => 'Usuario no encontrado o bloqueado']),
+                    default => respuesta(500, ['success' => false, 'mensaje' => 'Error inesperado al actualizar la publicación']),
+                };
             }
 
             //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             //========== DELETE ==========
             function eliminarPublicacion(int $id): void {
-                $resultado = $this->modelo->eliminarPubliacion(
-                    $id
-                );
+                $usuario = usuarioActual();
 
-                //Resultado recibido
-                if($resultado === false){
-                    respuesta(404, ['success' => false,'mensaje' => 'La publicación no fue encontrada o se encuentra bloqueada'
-                    ]);
-                }
-                else{
-                    respuesta(200, ['success' => true, 'mensaje' => 'Publicación eliminada correctamente']);
-                }
+                $resultado = $this->modelo->eliminarPubliacion($id, $usuario);
+
+                match ($resultado) {
+                    0       => respuesta(200, ['success' => true, 'mensaje' => 'Publicación eliminada correctamente']),
+                    1       => respuesta(404, ['success' => false, 'mensaje' => 'La publicación no fue encontrada o se encuentra bloqueada']),
+                    2       => respuesta(404, ['success' => false, 'mensaje' => 'Usuario no encontrado o bloqueado']),
+                    3       => respuesta(403, ['success' => false, 'mensaje' => 'No tienes permiso para eliminar esta publicación']),
+                    default => respuesta(500, ['success' => false, 'mensaje' => 'Error inesperado al eliminar la publicación']),
+                };
             }
 
             //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             //========== PATCH ==========
             function cambiarEstado(int $id): void {
-                $datos = leerJson();
+                $usuario = usuarioActual();
+                $datos   = leerJson();
 
                 $estado = $datos['estado'] ?? '';
-                $estado = strtoupper($estado);
+
+                if (!is_string($estado)) {
+                    respuesta(400, ['success' => false, 'mensaje' => 'El estado debe ser texto']);
+                }
+
+                $estado = strtoupper(trim($estado));
 
                 validarCamposVacios([$estado]);
-                
+
                 if($estado !== 'SINRESOLVER' && $estado !== 'RESUELTA'){
                     respuesta(400, ['success' => false, 'mensaje' => 'Tipo de estado inválido']);
                 }
 
-                $resultado = $this->modelo->cambiarEstadoPublicacion(
-                    $id,
-                    $estado
-                );
+                $resultado = $this->modelo->cambiarEstadoPublicacion($id, $estado, $usuario);
 
-                //Resultado recibido
-                if($resultado === false){
-                    respuesta(404, ['success' => false,'mensaje' => 'Publicación no encontrada o bloqueada'
-                    ]);
-                }
-                else{
-                    respuesta(200, ['success' => true, 'mensaje' => 'El estado de la publicación fue actualizado correctamente']);
-                }
+                match ($resultado) {
+                    0       => respuesta(200, ['success' => true, 'mensaje' => 'El estado de la publicación fue actualizado correctamente']),
+                    1       => respuesta(404, ['success' => false, 'mensaje' => 'Publicación no encontrada o bloqueada']),
+                    2       => respuesta(404, ['success' => false, 'mensaje' => 'Usuario no encontrado o bloqueado']),
+                    3       => respuesta(403, ['success' => false, 'mensaje' => 'No tienes permiso para cambiar el estado de esta publicación']),
+                    default => respuesta(500, ['success' => false, 'mensaje' => 'Error inesperado al cambiar el estado']),
+                };
             }
         }
 ?>

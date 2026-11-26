@@ -105,22 +105,281 @@
         articulo.appendChild(crear('h1', 'publicacion-titulo', p.titulo));
         articulo.appendChild(crear('p', 'publicacion-texto', p.mensaje));
 
-        // Adjuntos como enlaces simples 
-        const archivos = [p.archivo_1, p.archivo_2, p.archivo_3].filter(Boolean);
-        if (archivos.length > 0) {
+        // Lista de archivos adjuntos
+        const adjuntos = [1, 2, 3]
+            .map(n => ({ url: p['archivo_' + n], nombre: p['archivo_' + n + '_nombre'] }))
+            .filter(a => a.url);
+        if (adjuntos.length > 0) {
             const caja = crear('div', 'publicacion-adjuntos');
-            archivos.forEach((url, i) => {
-                const enlace = crear('a', '', 'Archivo ' + (i + 1));
-                enlace.href = url;
-                enlace.target = '_blank';
-                enlace.rel = 'noopener';
-                caja.appendChild(enlace);
+            caja.appendChild(crear('p', 'publicacion-adjuntos-titulo', 'Archivos adjuntos'));
+
+            const ul = crear('ul', 'publicacion-adjuntos-lista');
+            adjuntos.forEach((a, i) => {
+                const tecnico = !a.nombre || a.nombre.startsWith('documento_');
+                const previsualizable = /\.(pdf|jpe?g|png|webp)$/i.test(a.url);
+                const li = crear('li', 'publicacion-adjunto');
+
+                const enlace = crear('a', 'publicacion-adjunto-nombre', tecnico ? 'Archivo adjunto ' + (i + 1) : a.nombre);
+                enlace.href = a.url;
+
+                if (previsualizable) {
+                    // PDF e imágenes: se ven en una pestaña nueva
+                    enlace.target = '_blank';
+                    enlace.rel = 'noopener';
+                } else if (!tecnico) {
+                    // Word, Excel, PowerPoint: se descargan con su nombre original
+                    enlace.download = a.nombre;
+                }
+                li.appendChild(enlace);
+
+                // Descarga con nombre original para lo que se puede previsualizar
+                if (previsualizable && !tecnico) {
+                    const descargar = crear('a', 'publicacion-adjunto-descargar', 'Descargar');
+                    descargar.href = a.url;
+                    descargar.download = a.nombre;
+                    li.appendChild(descargar);
+                }
+
+                ul.appendChild(li);
             });
+            caja.appendChild(ul);
             articulo.appendChild(caja);
         }
 
         articulo.appendChild(crear('small', 'publicacion-fecha', formatearFecha(p.fecha)));
         document.title = p.titulo;
+
+        // Editar y eliminar: la API decide quién ve cada botón
+        if (p.puede_editar || p.puede_eliminar) {
+            const acciones = crear('div', 'publicacion-detalle-acciones');
+
+            if (p.puede_editar) {
+                const editar = crear('button', 'btn-secundario', 'Editar');
+                editar.type = 'button';
+                editar.addEventListener('click', () => abrirEdicion(p, editar));
+                acciones.appendChild(editar);
+            }
+
+            if (p.puede_eliminar) {
+                const eliminar = crear('button', 'btn-secundario btn-eliminar', 'Eliminar');
+                eliminar.type = 'button';
+                eliminar.addEventListener('click', () => eliminarPublicacion(eliminar));
+                acciones.appendChild(eliminar);
+            }
+
+            articulo.appendChild(acciones);
+        }
+    }
+
+    // ---------- Editar y eliminar la publicación ----------
+
+    async function eliminarPublicacion(boton) {
+        if (!window.confirm('¿Eliminar esta publicación?')) return;
+
+        boton.disabled = true;
+        const resultado = await pedir(`${api}/publicaciones/${idPublicacion}`, { method: 'DELETE' });
+
+        if (!resultado.ok) {
+            window.alert(mensajeDe(resultado));
+            boton.disabled = false;
+            return;
+        }
+        window.location.href = 'index.php?page=inicio';
+    }
+
+    async function abrirEdicion(p, botonEditar) {
+        botonEditar.disabled = true;
+        const rMaterias = await pedir(`${api}/materias`);
+        botonEditar.disabled = false;
+
+        if (!rMaterias.ok) {
+            window.alert(mensajeDe(rMaterias));
+            return;
+        }
+
+        const MAX_BYTES = 10 * 1024 * 1024;
+
+        const form = crear('form', 'publicacion-edicion');
+        form.noValidate = true;
+
+        const inputTitulo = crear('input');
+        inputTitulo.type = 'text';
+        inputTitulo.maxLength = 200;
+        inputTitulo.placeholder = 'Título';
+        inputTitulo.value = p.titulo || '';
+        form.appendChild(inputTitulo);
+
+        const selector = crear('select');
+        rMaterias.datos.materias.forEach(m => {
+            const opcion = crear('option', '', m.nombre);
+            opcion.value = m.id_materia;
+            selector.appendChild(opcion);
+        });
+        selector.value = String(p.id_materia);
+        form.appendChild(selector);
+
+        const area = crear('textarea');
+        area.maxLength = 5000;
+        area.placeholder = 'Mensaje';
+        area.value = p.mensaje || '';
+        form.appendChild(area);
+
+        // Tres espacios de adjuntos (posiciones 1, 2 y 3, como en la API)
+        const slots = [1, 2, 3].map(n => ({
+            existente: p['archivo_' + n]
+                ? { nombre: p['archivo_' + n + '_nombre'] }
+                : null,
+            eliminar: false,
+            nuevo: null
+        }));
+
+        form.appendChild(crear('p', 'publicacion-adjuntos-titulo', 'Archivos adjuntos'));
+
+        const lista = crear('ul', 'edicion-adjuntos');
+        form.appendChild(lista);
+
+        const inputArchivo = crear('input');
+        inputArchivo.type = 'file';
+        inputArchivo.hidden = true;
+        inputArchivo.accept = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.webp';
+        form.appendChild(inputArchivo);
+
+        const mensajeError = crear('p', 'comentario-form-error');
+        mensajeError.hidden = true;
+        form.appendChild(mensajeError);
+
+        let slotElegido = null;
+
+        inputArchivo.addEventListener('change', () => {
+            const archivo = inputArchivo.files[0];
+            inputArchivo.value = '';
+            if (!archivo || slotElegido === null) return;
+
+            // Solo ayuda: el servidor vuelve a validar tamaño y tipo
+            if (archivo.size > MAX_BYTES) {
+                mensajeError.textContent = '"' + archivo.name + '" supera los 10 MB.';
+                mensajeError.hidden = false;
+                return;
+            }
+            mensajeError.hidden = true;
+            slots[slotElegido].nuevo = archivo;
+            slots[slotElegido].eliminar = false;
+            pintarSlots();
+        });
+
+        function pintarSlots() {
+            lista.replaceChildren();
+
+            slots.forEach((s, i) => {
+                const item = crear('li', 'edicion-adjunto');
+
+                let texto = 'Sin archivo';
+                if (s.nuevo) {
+                    texto = s.nuevo.name + ' (nuevo)';
+                } else if (s.existente && s.eliminar) {
+                    texto = 'Se quitará al guardar';
+                } else if (s.existente) {
+                    const tecnico = !s.existente.nombre || s.existente.nombre.startsWith('documento_');
+                    texto = tecnico ? 'Archivo adjunto ' + (i + 1) : s.existente.nombre;
+                }
+                item.appendChild(crear('span', 'edicion-adjunto-nombre', texto));
+
+                const botones = crear('div', 'edicion-adjunto-botones');
+
+                const elegir = crear('button', 'btn-secundario',
+                    (s.existente && !s.eliminar) || s.nuevo ? 'Reemplazar' : 'Elegir archivo');
+                elegir.type = 'button';
+                elegir.addEventListener('click', () => {
+                    slotElegido = i;
+                    inputArchivo.click();
+                });
+                botones.appendChild(elegir);
+
+                if (s.nuevo) {
+                    const quitarNuevo = crear('button', 'btn-secundario', 'Quitar nuevo');
+                    quitarNuevo.type = 'button';
+                    quitarNuevo.addEventListener('click', () => { s.nuevo = null; pintarSlots(); });
+                    botones.appendChild(quitarNuevo);
+                } else if (s.existente && !s.eliminar) {
+                    const quitar = crear('button', 'btn-secundario', 'Quitar');
+                    quitar.type = 'button';
+                    quitar.addEventListener('click', () => { s.eliminar = true; pintarSlots(); });
+                    botones.appendChild(quitar);
+                } else if (s.existente && s.eliminar) {
+                    const deshacer = crear('button', 'btn-secundario', 'Deshacer');
+                    deshacer.type = 'button';
+                    deshacer.addEventListener('click', () => { s.eliminar = false; pintarSlots(); });
+                    botones.appendChild(deshacer);
+                }
+
+                item.appendChild(botones);
+                lista.appendChild(item);
+            });
+        }
+
+        const botonesForm = crear('div', 'comentario-form-botones');
+        const guardar = crear('button', '', 'Guardar cambios');
+        guardar.type = 'submit';
+        const cancelar = crear('button', 'btn-secundario', 'Cancelar');
+        cancelar.type = 'button';
+        cancelar.addEventListener('click', () => mostrarPublicacion(p));
+        botonesForm.appendChild(guardar);
+        botonesForm.appendChild(cancelar);
+        form.appendChild(botonesForm);
+
+        form.addEventListener('submit', async evento => {
+            evento.preventDefault();
+
+            const titulo = inputTitulo.value.trim();
+            const mensaje = area.value.trim();
+
+            if (titulo === '' || mensaje === '') {
+                mensajeError.textContent = 'El título y el mensaje son obligatorios';
+                mensajeError.hidden = false;
+                return;
+            }
+
+            const cuerpo = new FormData();
+            cuerpo.append('titulo', titulo);
+            cuerpo.append('id_materia', selector.value);
+            cuerpo.append('mensaje', mensaje);
+            slots.forEach((s, i) => {
+                if (s.nuevo) {
+                    cuerpo.append('archivo_' + (i + 1), s.nuevo);
+                } else if (s.existente && s.eliminar) {
+                    cuerpo.append('eliminar_' + (i + 1), '1');
+                }
+            });
+
+            guardar.disabled = true;
+            guardar.textContent = 'Guardando...';
+            mensajeError.hidden = true;
+
+            // PHP no lee multipart en un PUT real: se envía como POST con ?_method=PUT
+            const resultado = await pedir(`${api}/publicaciones/${idPublicacion}?_method=PUT`, {
+                method: 'POST',
+                body: cuerpo
+            });
+
+            if (!resultado.ok) {
+                mensajeError.textContent = mensajeDe(resultado);
+                mensajeError.hidden = false;
+                guardar.disabled = false;
+                guardar.textContent = 'Guardar cambios';
+                return;
+            }
+
+            const rNueva = await pedir(`${api}/publicaciones/${idPublicacion}`);
+            if (rNueva.ok) {
+                mostrarPublicacion(rNueva.datos.publicacion);
+            } else {
+                window.location.reload();
+            }
+        });
+
+        pintarSlots();
+        articulo.replaceChildren(form);
+        inputTitulo.focus();
     }
 
     // ---------- Formularios (principal, responder y editar) ----------
@@ -298,10 +557,11 @@
             });
             acciones.appendChild(responder);
 
-            // Editar y eliminar solo para el dueño (la regla real está en la API)
+            // Editar y eliminar solo para el autor
             if (haySesion && c.id_usuario === idUsuario) {
                 const editar = crear('button', 'btn-secundario', 'Editar');
                 editar.type = 'button';
+                editar.hidden = !c.editable; // pasada la hora, Editar se oculta
                 editar.addEventListener('click', () => {
                     if (cierreActual) cierreActual();
 
@@ -331,7 +591,7 @@
                 eliminar.type = 'button';
                 eliminar.addEventListener('click', () => eliminarComentario(c, eliminar));
 
-                acciones.appendChild(editar);
+                if (c.editable) acciones.appendChild(editar);
                 acciones.appendChild(eliminar);
             }
 

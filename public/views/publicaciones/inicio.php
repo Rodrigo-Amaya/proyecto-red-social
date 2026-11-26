@@ -36,11 +36,33 @@ $publicaciones = $publicaciones ?? [];
             <?php else: ?>
             <section id="crear-publicacion">
 
-                <form action="/publicaciones/crear" method="POST">
-                    <textarea name="mensaje" 
-                    placeholder="¿Con qué necesitas ayuda?" required></textarea>
+                <form id="form-publicacion">
+                    <select id="pub-materia" name="id_materia" required>
+                        <option value="">Elige una materia</option>
+                    </select>
 
-                    <button type="submit">+ Publicar tarea</button>
+                    <input type="text" id="pub-titulo" name="titulo"
+                           placeholder="Título de tu pregunta" maxlength="200" required>
+
+                    <textarea id="pub-mensaje" name="mensaje"
+                              placeholder=" Describe ¿Con qué necesitas ayuda?" maxlength="5000" required></textarea>
+
+                    <div class="adjuntos">
+                        <p class="adjuntos-titulo">Archivos adjuntos</p>
+                        <ul id="pub-adjuntos" class="adjuntos-lista"></ul>
+                    </div>
+
+                    <p id="pub-estado" class="form-estado" role="alert" hidden></p>
+
+                    <div class="form-acciones">
+                        <input type="file" id="pub-archivos" multiple hidden
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.webp">
+                        <button type="button" id="pub-adjuntar" title="Adjuntar archivos" aria-label="Adjuntar archivos">
+                            <svg class="icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                            <span class="adjuntar-texto">Adjuntar</span>
+                        </button>
+                        <button type="submit" id="pub-enviar">+ Publicar tarea</button>
+                    </div>
                 </form>
 
             </section>
