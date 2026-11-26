@@ -1,4 +1,3 @@
-
 <?php
     class ComentarioController implements Controlador
     {
@@ -13,38 +12,34 @@
         {
             $idPublicacion = $partes[1] ?? null;
 
-            // URL: /publicacion/{idPublicacion}/comentario
+            // URL: /publicaciones/{idPublicacion}/comentario
             if ($idPublicacion === null) {
                 noEncontrado();
-                return;
             }
 
             $idPublicacion = validarId($idPublicacion, 'ID de publicación inválido');
 
-            // Comprobar que la ruta corresponda a comentarios
             if (($partes[2] ?? null) !== 'comentario') {
                 noEncontrado();
-                return;
             }
 
             $idComentario = $partes[3] ?? null;
 
-            // URL: /publicacion/{idPublicacion}/comentario
+            // URL: /publicaciones/{idPublicacion}/comentario
             if ($idComentario === null) {
                 match ($metodo) {
-                    'GET'  => $this->buscarComentarios($idPublicacion),
-                    'POST' => $this->ingresarNuevoComentario($idPublicacion),
+                    'GET'   => $this->buscarComentarios($idPublicacion),
+                    'POST'  => $this->ingresarNuevoComentario($idPublicacion),
                     default => noPermitido(),
                 };
                 return;
             }
 
-            // URL: /publicacion/{idPublicacion}/comentario/{idComentario}
+            // URL: /publicaciones/{idPublicacion}/comentario/{idComentario}
             $idComentario = validarId($idComentario, 'ID de comentario inválido');
 
             if (isset($partes[4])) {
                 noEncontrado();
-                return;
             }
 
             match ($metodo) {
@@ -62,66 +57,48 @@
         // Obtener un comentario por ID
         public function obtenerComentario(int $idPublicacion, int $idComentario): void
         {
-            $resultado = $this->modelo->buscarPorID(
-                $idComentario,
-                $idPublicacion
-            );
+            $resultado = $this->modelo->buscarPorID($idComentario, $idPublicacion);
 
             if (!$resultado) {
-                respuesta(404, [
-                    'success' => false,
-                    'Mensaje' => 'Comentario no encontrado o bloqueado'
-                ]);
-                return;
+                respuesta(404, ['success' => false, 'mensaje' => 'Comentario no encontrado o bloqueado']);
             }
 
             respuesta(200, [
-                'success' => true,
-                'Comentario' => $resultado
+                'success'    => true,
+                'mensaje'    => 'Comentario obtenido correctamente',
+                'comentario' => $resultado
             ]);
         }
 
 
-        // Buscar comentarios de una publicación
+        // Listar comentarios de una publicación
         public function buscarComentarios(int $idPublicacion): void
         {
             if (isset($_GET['fecha']) || isset($_GET['likes'])) {
+                // Los filtros deben ser texto
+                if (
+                    (isset($_GET['fecha']) && !is_string($_GET['fecha'])) ||
+                    (isset($_GET['likes']) && !is_string($_GET['likes']))
+                ) {
+                    respuesta(400, ['success' => false, 'mensaje' => 'Los filtros enviados no son válidos']);
+                }
 
                 $ordenFecha = strtoupper(trim($_GET['fecha'] ?? ''));
                 $ordenLikes = strtoupper(trim($_GET['likes'] ?? ''));
 
-            // Validar que no se envíen parámetros vacíos
-            if (
-                (isset($_GET['fecha']) && $ordenFecha === '') ||
-                (isset($_GET['likes']) && $ordenLikes === '')
-            ) {
-                respuesta(400, [
-                    'success' => false,
-                    'Mensaje' => 'Los filtros enviados no pueden estar vacíos'
-                ]);
-                return;
-            }
-
-                // Validar orden de fecha
-                if ($ordenFecha !== '' &&
-                    !in_array($ordenFecha, ['ASC', 'DESC'], true)) {
-
-                    respuesta(400, [
-                        'success' => false,
-                        'Mensaje' => 'Tipo de orden de fecha inválido'
-                    ]);
-                    return;
+                if (
+                    (isset($_GET['fecha']) && $ordenFecha === '') ||
+                    (isset($_GET['likes']) && $ordenLikes === '')
+                ) {
+                    respuesta(400, ['success' => false, 'mensaje' => 'Los filtros enviados no pueden estar vacíos']);
                 }
 
-                // Validar orden de likes
-                if ($ordenLikes !== '' &&
-                    !in_array($ordenLikes, ['ASC', 'DESC'], true)) {
+                if ($ordenFecha !== '' && !in_array($ordenFecha, ['ASC', 'DESC'], true)) {
+                    respuesta(400, ['success' => false, 'mensaje' => 'Tipo de orden de fecha inválido']);
+                }
 
-                    respuesta(400, [
-                        'success' => false,
-                        'Mensaje' => 'Tipo de orden de likes inválido'
-                    ]);
-                    return;
+                if ($ordenLikes !== '' && !in_array($ordenLikes, ['ASC', 'DESC'], true)) {
+                    respuesta(400, ['success' => false, 'mensaje' => 'Tipo de orden de likes inválido']);
                 }
 
                 $resultado = $this->modelo->ordenarPorFiltros(
@@ -129,98 +106,58 @@
                     $ordenFecha ?: null,
                     $ordenLikes ?: null
                 );
+            } else {
+                $resultado = $this->modelo->todosComentarios($idPublicacion);
             }
 
-            // Obtener todos los comentarios sin filtros
-            else {
-                $resultado = $this->modelo->todosComentarios(
-                    $idPublicacion
-                );
-            }
-
-            if ($resultado) {
-                respuesta(200, [
-                    'success' => true,
-                    'Comentarios' => $resultado
-                ]);
-            }
-            else {
-                respuesta(200, [
-                    'success' => true,
-                    'Comentarios' => []
-                ]);
-            }
+            respuesta(200, [
+                'success'     => true,
+                'mensaje'     => 'Comentarios obtenidos correctamente',
+                'comentarios' => $resultado ?: []
+            ]);
         }
 
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== POST ==========
 
-        // Registrar un nuevo comentario
+        // Registrar un nuevo comentario (Requiere sesion)
         public function ingresarNuevoComentario(int $idPublicacion): void
         {
-            $titulo = $_POST['titulo'] ?? '';
-            $mensaje = $_POST['mensaje'] ?? '';
-            $usuario = $_POST['id_usuario'] ?? '';
+            $usuario = usuarioActual();
+
+            $titulo          = $_POST['titulo'] ?? '';
+            $mensaje         = $_POST['mensaje'] ?? '';
             $comentarioPadre = $_POST['id_comentario_padre'] ?? null;
 
-            // Archivos adjuntos
+            if (!is_string($titulo) || !is_string($mensaje)) {
+            respuesta(400, ['success' => false, 'mensaje' => 'Los datos enviados no son válidos']);
+        }
+
+            $titulo  = trim($titulo);
+            $mensaje = trim($mensaje);
+
+            // Validar mensaje
+            if ($mensaje === '') {
+                respuesta(400, ['success' => false, 'mensaje' => 'El mensaje es obligatorio']);
+            }
+
+            // Comentario padre
+            if ($comentarioPadre === '' || $comentarioPadre === '0') {
+                $comentarioPadre = null;
+            } elseif ($comentarioPadre !== null) {
+                $comentarioPadre = validarId($comentarioPadre, 'ID de comentario padre inválido');
+            }
+
+            // Archivos adjuntos (Maximo 3)
             $archivo1 = $_FILES['archivo_1'] ?? null;
             $archivo2 = $_FILES['archivo_2'] ?? null;
             $archivo3 = $_FILES['archivo_3'] ?? null;
 
-            $archivos = [
-                $archivo1,
-                $archivo2,
-                $archivo3
-            ];
-
-            // Validar campos obligatorios
-            if (!is_string($titulo) ||
-                !is_string($mensaje) ||
-                !is_string($usuario)) {
-
-                respuesta(400, [
-                    'success' => false,
-                    'Mensaje' => 'Los datos enviados no son válidos'
-                ]);
-                return;
-            }
-
-            $titulo = trim($titulo);
-            $mensaje = trim($mensaje);
-
-            if ($titulo === '' || $mensaje === '' || $usuario === '') {
-                respuesta(400, [
-                    'success' => false,
-                    'Mensaje' => 'Todos los campos obligatorios deben completarse'
-                ]);
-                return;
-            }
-
-            // Validar ID de usuario
-            validarCampoEntero($usuario);
-
-            // Validar comentario padre (si es una respuesta)
-            if ($comentarioPadre === '' || $comentarioPadre === '0') {
-                $comentarioPadre = null;
-            }
-            else if ($comentarioPadre !== null) {
-                $comentarioPadre = validarId(
-                    $comentarioPadre,
-                    'ID de comentario padre inválido'
-                );
-            }
-
-            // Validar archivos y obtener sus extensiones
             $extensiones = [];
 
-            foreach ($archivos as $archivo) {
-
-                // No se adjuntó ningún archivo
-                if ($archivo === null ||
-                    ($archivo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-
+            foreach ([$archivo1, $archivo2, $archivo3] as $archivo) {
+                if ($archivo === null || ($archivo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
                     $extensiones[] = null;
                     continue;
                 }
@@ -228,21 +165,16 @@
                 $extension = validarDocumento($archivo);
 
                 if ($extension === false) {
-                    respuesta(400, [
-                        'success' => false,
-                        'Mensaje' => 'Tipo de archivo inválido o archivo corrupto'
-                    ]);
-                    return;
+                    respuesta(400, ['success' => false, 'mensaje' => 'Tipo de archivo inválido o archivo corrupto']);
                 }
 
                 $extensiones[] = $extension;
             }
 
-            // Enviar datos al modelo
             $resultado = $this->modelo->hacerComentario(
                 $titulo,
                 $mensaje,
-                (int)$usuario,
+                $usuario,
                 $idPublicacion,
                 $comentarioPadre,
                 $archivo1,
@@ -251,242 +183,98 @@
                 $extensiones
             );
 
-            // Interpretar resultado del modelo
-            switch ($resultado) {
-
-                case 0:
-                    respuesta(201, [
-                        'success' => true,
-                        'Mensaje' => 'Comentario registrado correctamente'
-                    ]);
-                    break;
-
-                case 1:
-                    respuesta(404, [
-                        'success' => false,
-                        'Mensaje' => 'Usuario no encontrado o bloqueado'
-                    ]);
-                    break;
-
-                case 2:
-                    respuesta(404, [
-                        'success' => false,
-                        'Mensaje' => 'Publicación no encontrada o bloqueada'
-                    ]);
-                    break;
-
-                case 3:
-                    respuesta(400, [
-                        'success' => false,
-                        'Mensaje' => 'Comentario padre inválido¿'
-                    ]);
-                    break;
-
-                case 4:
-                    respuesta(400, [
-                        'success' => false,
-                        'Mensaje' => 'El comentario padre pertenece a otra publicación'
-                    ]);
-                    break;
-
-                case 5:
-                    respuesta(400, [
-                        'success' => false,
-                        'Mensaje' => 'El título y el mensaje son obligatorios'
-                    ]);
-                    break;
-
-                case 6:
-                    respuesta(400, [
-                        'success' => false,
-                        'Mensaje' => 'El título o el mensaje superan la longitud permitida'
-                    ]);
-                    break;
-
-                case 7:
-                    respuesta(500, [
-                        'success' => false,
-                        'Mensaje' => 'Error al guardar archivos o realizar la operación.'
-                    ]);
-                    break;
-
-                default:
-                    respuesta(500, [
-                        'success' => false,
-                        'Mensaje' => 'Error inesperado al registrar el comentario'
-                    ]);
-                    break;
+            if ($resultado === 0) {
+                respuesta(201, ['success' => true, 'mensaje' => 'Comentario registrado correctamente']);
             }
+
+            $errores = [
+                1 => [404, 'Usuario no encontrado o bloqueado'],
+                2 => [404, 'Publicación no encontrada o bloqueada'],
+                3 => [400, 'Comentario padre inválido'],
+                4 => [400, 'El comentario padre pertenece a otra publicación'],
+                5 => [400, 'El mensaje es obligatorio'],
+                6 => [400, 'El título o el mensaje superan la longitud permitida'],
+                7 => [500, 'Error al guardar archivos o realizar la operación'],
+            ];
+
+            [$codigo, $textoError] = $errores[$resultado] ?? [500, 'Error inesperado al registrar el comentario'];
+            respuesta($codigo, ['success' => false, 'mensaje' => $textoError]);
         }
 
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== PUT ==========
 
-        // Actualizar un comentario
+        // Actualizar un comentario (Requiere sesion)
         public function actualizarComentario(int $idPublicacion, int $idComentario): void
         {
-            $datos = leerJson();
+            $usuario = usuarioActual();
+            $datos   = leerJson();
 
-            $titulo = $datos['titulo'] ?? '';
+            $titulo  = $datos['titulo'] ?? '';
             $mensaje = $datos['mensaje'] ?? '';
-            $usuario = $datos['usuario'] ?? '';
 
-            // Validar tipos de datos
-            if (!is_string($titulo) ||
-                !is_string($mensaje) ||
-                !is_scalar($usuario)) {
-
-                respuesta(400, [
-                    'success' => false,
-                    'Mensaje' => 'Los datos enviados no son válidos'
-                ]);
-                return;
+            if (!is_string($titulo) || !is_string($mensaje)) {
+                respuesta(400, ['success' => false, 'mensaje' => 'Los datos enviados no son válidos']);
             }
 
-            $titulo = trim($titulo);
+            $titulo  = trim($titulo);
             $mensaje = trim($mensaje);
 
-            // Validar campos obligatorios
-            validarCamposVacios([
-                $titulo,
-                $mensaje,
-                $usuario
-            ]);
+            if ($mensaje === '') {
+                respuesta(400, ['success' => false, 'mensaje' => 'El mensaje es obligatorio']);
+            }
 
-            // Validar usuario
-            validarCampoEntero($usuario);
-
-            // Verificar que el comentario pertenezca a la publicación indicada
-            $comentario = $this->modelo->buscarPorID(
-                $idComentario,
-                $idPublicacion
-            );
+            // El comentario debe pertenecer a la publicación indicada en la URL
+            $comentario = $this->modelo->buscarPorID($idComentario, $idPublicacion);
 
             if (!$comentario) {
-                respuesta(404, [
-                    'success' => false,
-                    'Mensaje' => 'Comentario no encontrado o bloqueado'
-                ]);
-                return;
+                respuesta(404, ['success' => false, 'mensaje' => 'Comentario no encontrado o bloqueado']);
             }
 
-            // Enviar datos al modelo
-            $resultado = $this->modelo->actualizarComentario(
-                $idComentario,
-                $titulo,
-                $mensaje,
-                (int)$usuario
-            );
+            $resultado = $this->modelo->actualizarComentario($idComentario, $titulo, $mensaje, $usuario);
 
-            switch ($resultado) {
-
-                case 0:
-                    respuesta(200, [
-                        'success' => true,
-                        'Mensaje' => 'Comentario actualizado correctamente'
-                    ]);
-                    break;
-
-                case 1:
-                    respuesta(404, [
-                        'success' => false,
-                        'Mensaje' => 'Comentario no encontrado o bloqueado'
-                    ]);
-                    break;
-
-                case 2:
-                    respuesta(404, [
-                        'success' => false,
-                        'Mensaje' => 'Usuario no encontrado o bloqueado'
-                    ]);
-                    break;
-
-                case 3:
-                    respuesta(403, [
-                        'success' => false,
-                        'Mensaje' => 'No tienes permiso para modificar este comentario'
-                    ]);
-                    break;
-
-                case 6:
-                    respuesta(400, [
-                        'success' => false,
-                        'Mensaje' => 'El título y el mensaje son obligatorios'
-                    ]);
-                    break;
-
-                case 7:
-                    respuesta(400, [
-                        'success' => false,
-                        'Mensaje' => 'El título o el mensaje superan la longitud permitida'
-                    ]);
-                    break;
-
-                default:
-                    respuesta(500, [
-                        'success' => false,
-                        'Mensaje' => 'Error inesperado al actualizar el comentario'
-                    ]);
-                    break;
+            if ($resultado === 0) {
+                respuesta(200, ['success' => true, 'mensaje' => 'Comentario actualizado correctamente']);
             }
+
+            $errores = [
+                1 => [404, 'Comentario no encontrado o bloqueado'],
+                2 => [404, 'Usuario no encontrado o bloqueado'],
+                3 => [403, 'No tienes permiso para modificar este comentario'],
+                5 => [400, 'El mensaje es obligatorio'],
+                6 => [400, 'El título o el mensaje superan la longitud permitida'],
+            ];
+
+            [$codigo, $textoError] = $errores[$resultado] ?? [500, 'Error inesperado al actualizar el comentario'];
+            respuesta($codigo, ['success' => false, 'mensaje' => $textoError]);
         }
 
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== DELETE ==========
 
-        // Eliminar (bloquear) un comentario
+        // Eliminar/Bloquear un comentario (Requiere permisos de sesion) 
         public function eliminarComentario(int $idPublicacion, int $idComentario): void
         {
-            $datos = leerJson();
-
-            $usuario = $datos['usuario'] ?? '';
-
-            // Validar usuario
-            validarCamposVacios([$usuario]);
-            validarCampoEntero($usuario);
-
-            // Verificar que el comentario pertenezca a la publicación indicada
-            $comentario = $this->modelo->buscarPorID(
-                $idComentario,
-                $idPublicacion
-            );
+            $usuario = usuarioActual();
+            $comentario = $this->modelo->buscarPorID($idComentario, $idPublicacion);
 
             if (!$comentario) {
-                respuesta(404, [
-                    'success' => false,
-                    'Mensaje' => 'Comentario no encontrado o bloqueado'
-                ]);
-                return;
+                respuesta(404, ['success' => false, 'mensaje' => 'Comentario no encontrado o bloqueado']);
             }
 
-            // Verificar que el usuario sea el propietario
-            if ((int)$comentario['id_usuario'] !== (int)$usuario) {
-                respuesta(403, [
-                    'success' => false,
-                    'Mensaje' => 'No tienes permiso para eliminar este comentario'
-                ]);
-                return;
+            if ((int)$comentario['id_usuario'] !== $usuario) {
+                respuesta(403, ['success' => false, 'mensaje' => 'No tienes permiso para eliminar este comentario']);
             }
 
-            $resultado = $this->modelo->eliminarComentario(
-                $idComentario,
-                (int)$usuario
-            );
+            $resultado = $this->modelo->eliminarComentario($idComentario, $usuario);
 
             if ($resultado === true) {
-                respuesta(200, [
-                    'success' => true,
-                    'Mensaje' => 'Comentario eliminado correctamente'
-                ]);
+                respuesta(200, ['success' => true, 'mensaje' => 'Comentario eliminado correctamente']);
             }
-            else {
-                respuesta(404, [
-                    'success' => false,
-                    'Mensaje' => 'Comentario o usuario no encontrado, o bloqueado'
-                ]);
-            }
+
+            respuesta(404, ['success' => false, 'mensaje' => 'Comentario o usuario no encontrado, o bloqueado']);
         }
     }
 ?>

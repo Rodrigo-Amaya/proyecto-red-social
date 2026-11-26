@@ -20,6 +20,10 @@
             n.nombre AS nivel,
             m.nombre AS materia,
 
+            (SELECT COUNT(*) FROM comentarios c
+             INNER JOIN usuarios uc ON uc.id_usuario = c.id_usuario
+             WHERE c.id_publicacion = p.id_publicacion AND c.bloquear = 0 AND uc.bloqueo_usuario = 0) AS total_comentarios,
+
             (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1) AS archivo_1,
 
             (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 1) AS archivo_2,
@@ -85,6 +89,15 @@
         public function buscarPorID($id){
             $sql = ("SELECT p.id_publicacion, p.titulo, p.fecha, p.mensaje, p.puntos, p.id_usuario, p.id_materia, p.estado,
 
+            u.nombre AS autor,
+            u.url_foto,
+            n.nombre AS nivel,
+            m.nombre AS materia,
+
+            (SELECT COUNT(*) FROM comentarios c
+             INNER JOIN usuarios uc ON uc.id_usuario = c.id_usuario
+             WHERE c.id_publicacion = p.id_publicacion AND c.bloquear = 0 AND uc.bloqueo_usuario = 0) AS total_comentarios,
+
             (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1) AS archivo_1,
 
             (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 1) AS archivo_2,
@@ -92,7 +105,10 @@
             (SELECT a.url_archivo FROM archivos_publicaciones a WHERE a.id_publicacion = p.id_publicacion ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 2) AS archivo_3
 
             FROM publicaciones p
-            WHERE id_publicacion = ? AND p.bloquear = 0;");
+            INNER JOIN usuarios u ON u.id_usuario = p.id_usuario
+            INNER JOIN nivel_estudio n ON n.id_nivel = u.id_nivel
+            INNER JOIN materias m ON m.id_materia = p.id_materia
+            WHERE p.id_publicacion = ? AND p.bloquear = 0 AND u.bloqueo_usuario = 0;");
             $stmt = $this->conn->prepare($sql);
             $stmt->bind_param("i", $id); 
             

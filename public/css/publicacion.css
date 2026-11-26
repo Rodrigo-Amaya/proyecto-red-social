@@ -1,0 +1,293 @@
+/* DETALLE DE PUBLICACIÓN Y COMENTARIOS */
+
+.detalle [hidden] {
+    display: none !important;
+}
+
+.enlace-volver {
+    align-self: center;
+    color: var(--color-button);
+    text-decoration: none;
+    font-weight: var(--font-weight-semibold);
+}
+
+.enlace-volver:hover {
+    text-decoration: underline;
+}
+
+.detalle-contenido {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    max-width: 820px;
+}
+
+.detalle-cargando {
+    color: var(--color-subtext);
+}
+
+.detalle-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 20px;
+    border: 1px solid var(--color-border);
+    border-radius: 15px;
+    background-color: var(--color-background);
+}
+
+.detalle-error button {
+    background-color: var(--color-button);
+    color: var(--color-background);
+}
+
+/* PUBLICACIÓN */
+
+.publicacion-detalle .publicacion-titulo {
+    font-size: var(--font-size-title);
+    padding-bottom: 12px;
+}
+
+.publicacion-texto {
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.publicacion-adjuntos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.publicacion-adjuntos a {
+    padding: 6px 12px;
+    border-radius: 20px;
+    background-color: var(--color-bg-links);
+    color: var(--color-button);
+    font-size: var(--font-size-note);
+    text-decoration: none;
+}
+
+.publicacion-adjuntos a:hover {
+    text-decoration: underline;
+}
+
+.publicacion-fecha {
+    display: block;
+    margin-top: 15px;
+    color: var(--color-subtext);
+}
+
+/* SECCIÓN DE COMENTARIOS */
+
+.comentarios {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.comentarios h2 {
+    font-size: var(--font-size-body-title);
+    color: var(--color-title);
+}
+
+.comentarios-vacio,
+.comentarios-error {
+    padding: 25px;
+    text-align: center;
+    color: var(--color-subtext);
+    border: 1px solid var(--color-border);
+    border-radius: 15px;
+    background-color: var(--color-background);
+}
+
+.comentarios-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* FORMULARIOS (principal, responder y editar) */
+
+.comentario-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+    border: 1px solid var(--color-border);
+    border-radius: 15px;
+    background-color: var(--color-background);
+}
+
+.comentario-form-inline {
+    margin-top: 12px;
+    padding: 12px;
+    background-color: var(--color-bg-secondary);
+}
+
+.comentario-form input,
+.comentario-form textarea {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background-color: var(--color-background);
+    color: var(--color-text);
+    font-family: inherit;
+    font-size: var(--font-size-body);
+}
+
+.comentario-form textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.comentario-form-error {
+    color: #b3261e;
+    font-size: var(--font-size-body);
+}
+
+.comentario-form-botones {
+    display: flex;
+    gap: 10px;
+}
+
+.comentario-form button[type="submit"] {
+    align-self: flex-start;
+    background-color: var(--color-button);
+    color: var(--color-background);
+}
+
+.comentario-form button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.btn-secundario {
+    background-color: transparent;
+    color: var(--color-subtext);
+    border: 1px solid var(--color-border);
+}
+
+.btn-secundario:hover {
+    color: var(--color-button);
+    background-color: var(--color-bg-links);
+}
+
+/* HILO DE COMENTARIOS */
+
+.comentario-caja {
+    padding: 15px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background-color: var(--color-background);
+}
+
+.comentario-autor {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.comentario-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.comentario-info small,
+.comentario-fecha {
+    color: var(--color-subtext);
+}
+
+.comentario-titulo {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-title);
+    margin-bottom: 6px;
+}
+
+.comentario-texto {
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.comentario-acciones {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.comentario-acciones button {
+    padding: 6px 12px;
+    font-size: var(--font-size-note);
+}
+
+/* Comentario eliminado que conserva sus respuestas */
+.comentario-eliminado .comentario-caja {
+    background-color: transparent;
+    border-style: dashed;
+}
+
+.comentario-eliminado .comentario-texto {
+    color: var(--color-subtext);
+    font-style: italic;
+}
+
+/* Una sola sangría*/
+.comentario-respuestas {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 12px;
+    margin-left: 24px;
+    padding-left: 14px;
+    border-left: 2px solid var(--color-border);
+}
+
+.comentario-en-respuesta {
+    margin-bottom: 8px;
+    color: var(--color-subtext);
+    font-size: var(--font-size-note);
+}
+
+.comentario-hilo-controles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+    margin-left: 24px;
+}
+
+.btn-hilo {
+    padding: 6px 12px;
+    background-color: transparent;
+    color: var(--color-button);
+    border: 1px solid var(--color-border);
+    font-size: var(--font-size-note);
+}
+
+.btn-hilo:hover {
+    background-color: var(--color-bg-links);
+}
+
+@media (max-width: 768px) {
+    .detalle-contenido {
+        max-width: none;
+    }
+
+    .comentario-respuestas {
+        margin-left: 10px;
+        padding-left: 8px;
+    }
+
+    .comentario-hilo-controles {
+        margin-left: 10px;
+    }
+}

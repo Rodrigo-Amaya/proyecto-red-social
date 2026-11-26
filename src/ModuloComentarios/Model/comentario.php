@@ -8,27 +8,9 @@
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== GET ==========
-
+        // ---Devuelve todos los comentarios de una publicacion---
         public function todosComentarios($idPublicacion){
-            $sql = "SELECT c.id_comentario, c.titulo, c.fecha, c.mensaje, c.id_usuario, c.id_publicacion, c.id_comentario_padre, c.bloquear,
-
-            (SELECT a.url_archivo FROM archivos_comentarios a WHERE a.id_comentario = c.id_comentario ORDER BY a.id_archivo ASC LIMIT 1) AS archivo_1,
-
-            (SELECT a.url_archivo FROM archivos_comentarios a WHERE a.id_comentario = c.id_comentario ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 1) AS archivo_2,
-
-            (SELECT a.url_archivo FROM archivos_comentarios a WHERE a.id_comentario = c.id_comentario ORDER BY a.id_archivo ASC LIMIT 1 OFFSET 2) AS archivo_3
-
-            FROM comentarios c
-            WHERE c.id_publicacion = ? AND c.bloquear = 0;";
-            $stmt = $this->conn->prepare($sql);
-            if ($stmt === false) {
-                throw new RuntimeException($this->conn->error);
-            }
-            $stmt->bind_param("i", $idPublicacion);
-            $stmt->execute();
-            $resultado = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-            $stmt->close();
-            return $resultado;            
+            return $this->listarComentarios((int)$idPublicacion, null, null);        
         }
 
         //---Busqueda por ID---
@@ -59,11 +41,20 @@
 
         //---Ordenación mediante filtros---
         public function ordenarPorFiltros($idPublicacion, $ordenFecha, $ordenLikes){
-            //Lista blanca estricta solo acepta ASC o DESC
-            $dirLikes = in_array($ordenLikes, ['ASC', 'DESC'], true) ? $ordenLikes : null;
-            $dirFecha = in_array($ordenFecha, ['ASC', 'DESC'], true) ? $ordenFecha : null;
+            return $this->listarComentarios((int)$idPublicacion, $ordenFecha, $ordenLikes);
+        }
 
-            $sql = "SELECT c.id_comentario, c.titulo, c.fecha, c.mensaje, c.id_usuario, c.id_publicacion, c.id_comentario_padre, c.bloquear,
+        // Consultar los comentarios con filtros opcionales
+        private function listarComentarios(int $idPublicacion, ?string $ordenFecha, ?string $ordenLikes): array
+        {
+            $dirFecha = in_array($ordenFecha, ['ASC', 'DESC'], true) ? $ordenFecha : null;
+            $dirLikes = in_array($ordenLikes, ['ASC', 'DESC'], true) ? $ordenLikes : null;
+
+            $sql = "SELECT c.id_comentario, c.titulo, c.fecha, c.mensaje, c.id_usuario, c.id_publicacion, c.id_comentario_padre, c.bloquear, u.bloqueo_usuario,
+
+                u.nombre AS autor,
+                u.url_foto,
+                n.nombre AS nivel,
 
                 (SELECT a.url_archivo FROM archivos_comentarios a WHERE a.id_comentario = c.id_comentario ORDER BY a.id_archivo ASC LIMIT 1) AS archivo_1,
 
@@ -74,21 +65,24 @@
                 (SELECT COUNT(*) FROM likes_comentario l WHERE l.id_comentario = c.id_comentario) AS total_likes
 
                 FROM comentarios c
-
-                WHERE c.id_publicacion = ? AND c.bloquear = 0";
+                INNER JOIN usuarios u ON u.id_usuario = c.id_usuario
+                INNER JOIN nivel_estudio n ON n.id_nivel = u.id_nivel
+                WHERE c.id_publicacion = ?";
 
             $orden = [];
-
             if ($dirLikes !== null) {
                 $orden[] = "total_likes " . $dirLikes;
             }
             if ($dirFecha !== null) {
                 $orden[] = "c.fecha " . $dirFecha;
             }
-
-            if (!empty($orden)) {
-                $sql .= " ORDER BY " . implode(", ", $orden);
+            if (empty($orden)) {
+                $orden[] = "c.fecha ASC";
             }
+            // Desempate para que el orden siempre sea estable
+            $orden[] = "c.id_comentario ASC";
+
+            $sql .= " ORDER BY " . implode(", ", $orden);
 
             $stmt = $this->conn->prepare($sql);
             if ($stmt === false) {
@@ -96,51 +90,117 @@
             }
             $stmt->bind_param("i", $idPublicacion);
             $stmt->execute();
-            $resultado = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             $stmt->close();
-            return $resultado;
+
+            return $this->armarArbol($filas);
+        }
+
+        // ---Convertir lista en arbol de respuestas---
+        private function armarArbol(array $filas): array
+        {
+            $hijosPorPadre = [];
+
+            foreach ($filas as $fila) {
+                $fila['id_comentario']       = (int)$fila['id_comentario'];
+                $fila['id_usuario']          = (int)$fila['id_usuario'];
+                $fila['id_publicacion']      = (int)$fila['id_publicacion'];
+                $fila['total_likes']         = (int)$fila['total_likes'];
+                $fila['id_comentario_padre'] = $fila['id_comentario_padre'] !== null
+                    ? (int)$fila['id_comentario_padre']
+                    : null;
+
+                // Comentarios eliminados o usuarios bloqueados
+                $fila['eliminado'] = (int)$fila['bloquear'] === 1 || (int)$fila['bloqueo_usuario'] === 1;
+                unset($fila['bloquear'], $fila['bloqueo_usuario']);
+
+                // Agrupar comentario directo en la publicación
+                $hijosPorPadre[$fila['id_comentario_padre'] ?? 0][] = $fila;
+            }
+
+            $construir = function (int $idPadre) use (&$construir, &$hijosPorPadre): array {
+                $nodos = [];
+                foreach ($hijosPorPadre[$idPadre] ?? [] as $fila) {
+                    // Validar respuestas
+                    $respuestas = $construir($fila['id_comentario']);
+
+                    if ($fila['eliminado']) {
+                        // Si no hay comentarios hijos se oculta
+                        if (empty($respuestas)) {
+                            continue;
+                        }
+                        // Si hay entonces se muestran sin informacion del autor
+                        $fila = [
+                            'id_comentario'       => $fila['id_comentario'],
+                            'id_publicacion'      => $fila['id_publicacion'],
+                            'id_comentario_padre' => $fila['id_comentario_padre'],
+                            'fecha'               => $fila['fecha'],
+                            'eliminado'           => true,
+                            'titulo'              => null,
+                            'mensaje'             => '[comentario eliminado]',
+                            'id_usuario'          => null,
+                            'autor'               => null,
+                            'url_foto'            => null,
+                            'nivel'               => null,
+                            'archivo_1'           => null,
+                            'archivo_2'           => null,
+                            'archivo_3'           => null,
+                            'total_likes'         => 0,
+                        ];
+                    }
+
+                    $fila['respuestas'] = $respuestas;
+                    $nodos[] = $fila;
+                }
+                return $nodos;
+            };
+
+            return $construir(0);
         }
         
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== POST ==========
         public function hacerComentario(
-            string $titulo, 
-            string $mensaje, 
-            int $usuario, 
-            int $publicacion, 
-            ?int $comentarioPadre, 
-            ?array $archivo1, 
-            ?array $archivo2, 
-            ?array $archivo3, 
-            array $extenciones): int {
-            $comentarioPadre = ($comentarioPadre === null || $comentarioPadre === '' || $comentarioPadre === 0) ? null : (int) $comentarioPadre;
+            string $titulo,
+            string $mensaje,
+            int $usuario,
+            int $publicacion,
+            ?int $comentarioPadre,
+            ?array $archivo1,
+            ?array $archivo2,
+            ?array $archivo3,
+            array $extenciones
+        ): int {
+            // comentario directo con 0 | null
+            $comentarioPadre = $comentarioPadre ?: null;
 
             $titulo  = trim($titulo);
             $mensaje = trim($mensaje);
 
-            if ($titulo === '' || $mensaje === '') {
+            if ($mensaje === '') {
+                return 5;
+            }
+            if (mb_strlen($titulo) > 150 || mb_strlen($mensaje) > 5000) {
                 return 6;
             }
-            if (mb_strlen($titulo) > 200 || mb_strlen($mensaje) > 5000) {
-                return 7;
-            }
             
+            $titulo = $titulo === '' ? null : $titulo;
             $validacion = $this->validarPOST($usuario, $publicacion, $comentarioPadre);
 
-            //Si pasa todas las validaciones
-            if($validacion !== 0){
+            // Si no pasa todas las validaciones
+            if ($validacion !== 0) {
                 return $validacion;
             }
 
-            //valores por defecto
+            // Valores por defecto
             date_default_timezone_set('America/El_Salvador');
             $fecha = date('Y-m-d H:i:s');
 
             $this->conn->begin_transaction();
             $rutasSubidas = [];
-            
+
             try {
-                $sql = "INSERT INTO comentarios 
+                $sql = "INSERT INTO comentarios
                 (titulo, fecha, mensaje, id_usuario, id_publicacion, id_comentario_padre) VALUES (?,?,?,?,?,?)";
                 $stmt = $this->conn->prepare($sql);
                 if ($stmt === false) {
@@ -155,9 +215,9 @@
 
                 $archivos = [$archivo1, $archivo2, $archivo3];
 
-                //Para cada archivo se guarda
+                // Para cada archivo se guarda
                 foreach ($archivos as $indice => $archivo) {
-                    //Si no se envió un archivo
+                    // Si no se envió un archivo
                     if (!is_array($archivo) || ($archivo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
                         continue;
                     }
@@ -171,8 +231,8 @@
                     $tipoArchivo = $extenciones[$indice] ?? '';
                     $nombre = basename($ruta);
 
-                    $sql = "INSERT INTO archivos_comentarios 
-                    (id_comentario, url_archivo, nombre_archivo, tipo_archivo, fecha_subida) 
+                    $sql = "INSERT INTO archivos_comentarios
+                    (id_comentario, url_archivo, nombre_archivo, tipo_archivo, fecha_subida)
                     VALUES (?,?,?,?,?)";
 
                     $stmt = $this->conn->prepare($sql);
@@ -192,12 +252,9 @@
             } catch (Throwable $e) {
                 $this->conn->rollback();
                 // Borrar archivos físicos ya subidos
-                foreach ($rutasSubidas as $r) {
-                    if (is_file($r)) {
-                        @unlink($r);
-                    }
-                }
-                return 8;
+                $this->borrarArchivosFisicos($rutasSubidas);
+                error_log($e->getMessage());
+                return 7;
             }
         }    
         
@@ -289,22 +346,35 @@
             return "documentos/comentarios/" . $subdirectorio . $nombre;
         }
 
+        // Borra del disco archivos guardados
+        private function borrarArchivosFisicos(array $rutas): void
+        {
+            foreach ($rutas as $ruta) {
+                $rutaFisica = __DIR__ . '/../../../' . $ruta;
+                if (is_file($rutaFisica)) {
+                    @unlink($rutaFisica);
+                }
+            }
+        }
+
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== PUT ==========
         public function actualizarComentario($idComentario, $titulo, $mensaje, $usuario){
-            
-            $titulo  = trim($titulo);
-            $mensaje = trim($mensaje);
 
-            if ($titulo === '' || $mensaje === '') {
+            $titulo  = trim((string)$titulo);
+            $mensaje = trim((string)$mensaje);
+
+            if ($mensaje === '') {
+                return 5;
+            }
+            if (mb_strlen($titulo) > 150 || mb_strlen($mensaje) > 5000) {
                 return 6;
             }
-            if (mb_strlen($titulo) > 200 || mb_strlen($mensaje) > 5000) {
-                return 7;
-            }
+
+            $titulo = $titulo === '' ? null : $titulo;
             $validacion = $this->validarPUT($idComentario, $usuario);
             
-            //si pasa todas las validaciones
+            // Si pasa todas las validaciones
             if($validacion !== 0){
                 return $validacion;
             }
@@ -313,8 +383,8 @@
             $stmt = $this->conn->prepare($sql);
             if ($stmt === false) {
                 throw new RuntimeException($this->conn->error);
-            }            
-            $stmt->bind_param("ssi", $titulo, $mensaje, $idComentario); 
+            }
+            $stmt->bind_param("ssi", $titulo, $mensaje, $idComentario);
             if (!$stmt->execute()) {
                 throw new RuntimeException($stmt->error);
             }

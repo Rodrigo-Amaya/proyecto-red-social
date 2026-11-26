@@ -349,3 +349,44 @@ button {
         display: none;
     }
 }
+
+/* ENLACES DE LA TARJETA AL DETALLE */
+
+.publicacion-enlace {
+    color: inherit;
+    text-decoration: none;
+}
+
+.publicacion-enlace:hover {
+    text-decoration: underline;
+}
+
+.publicacion-comentarios {
+    margin-right: auto;
+    color: var(--color-subtext);
+    font-size: var(--font-size-body);
+    text-decoration: none;
+}
+
+.publicacion-comentarios:hover {
+    color: var(--color-button);
+}
+
+/* AVATAR */
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.avatar-inicial {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-button);
+    color: var(--color-background);
+    font-weight: var(--font-weight-bold);
+}

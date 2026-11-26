@@ -53,19 +53,26 @@ function iniciarFeed(feed) {
         return nodo;
     }
 
+    // Foto del autor, o su inicial si no tiene foto
+    function crearAvatar(url, nombre) {
+        if (url) {
+            const img = crear('img', 'avatar');
+            img.src = url;
+            img.alt = 'Foto de ' + (nombre || 'usuario');
+            return img;
+        }
+        return crear('span', 'avatar avatar-inicial', (nombre || 'U').charAt(0).toUpperCase());
+    }
+
     // Contenedor de publicaciones
     function crearTarjeta(p) {
         const articulo = crear('article', 'publicacion');
         articulo.dataset.materia = p.id_materia;
         articulo.dataset.id = p.id_publicacion;
+        const urlDetalle = 'index.php?page=publicacion&id=' + encodeURIComponent(p.id_publicacion);
 
         const cabecera = crear('header', 'publicacion-autor');
-        if (p.url_foto) {
-            const foto = document.createElement('img');
-            foto.src = p.url_foto;
-            foto.alt = 'Foto de ' + (p.autor || 'usuario');
-            cabecera.appendChild(foto);
-        }
+        cabecera.appendChild(crearAvatar(p.url_foto, p.autor));
 
         const info = crear('div', 'publicacion-info');
         info.appendChild(crear('strong', '', p.autor || 'Usuario eliminado'));
@@ -77,7 +84,11 @@ function iniciarFeed(feed) {
         }
 
         articulo.appendChild(cabecera);
-        articulo.appendChild(crear('p', 'publicacion-titulo', p.titulo));
+        const titulo = crear('p', 'publicacion-titulo');
+        const enlaceTitulo = crear('a', 'publicacion-enlace', p.titulo);
+        enlaceTitulo.href = urlDetalle;
+        titulo.appendChild(enlaceTitulo);
+        articulo.appendChild(titulo);
         articulo.appendChild(crear('p', '', p.mensaje));
 
         const acciones = crear('footer', 'publicacion-acciones');
@@ -91,11 +102,19 @@ function iniciarFeed(feed) {
         guardar.setAttribute('aria-label', 'Guardar publicación');
         guardar.innerHTML = ICONO_GUARDAR; // constante propia, sin datos del servidor
 
+        responder.addEventListener('click', () => {
+            window.location.href = haySesion ? urlDetalle : urlLogin;
+        });
+
         if (!haySesion) {
-            responder.addEventListener('click', () => { window.location.href = urlLogin; });
             guardar.addEventListener('click', () => { window.location.href = urlLogin; });
         }
 
+        const total = Number(p.total_comentarios) || 0;
+        const contador = crear('a', 'publicacion-comentarios', total === 1 ? '1 comentario' : total + ' comentarios');
+        contador.href = urlDetalle;
+
+        acciones.appendChild(contador);
         acciones.appendChild(responder);
         acciones.appendChild(guardar);
         articulo.appendChild(acciones);
@@ -214,18 +233,4 @@ function iniciarFeed(feed) {
     cargarMaterias();
     cargarMas();
     observador.observe(centinela);
-}
-
-// Cerrar sesión
-const botonSalir = document.getElementById('btn-cerrar-sesion');
-
-if (botonSalir) {
-    botonSalir.addEventListener('click', async () => {
-        try {
-            await fetch(botonSalir.dataset.api + '/auth/logout', { method: 'POST' });
-        } catch (e) {
-            console.error('No se pudo cerrar la sesión:', e.message);
-        }
-        window.location.href = 'index.php?page=inicio';
-    });
 }

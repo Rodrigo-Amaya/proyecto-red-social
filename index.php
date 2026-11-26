@@ -42,7 +42,7 @@ $pages = [
     ],
     'perfil'   => [
         'title' => 'Perfil',
-        'view'  => '/public/views/usuarios/perfil.php',
+        'view'  => '/public/views/usuarios/perfilUsuarios.php',
         'protegida' => true
     ],
     'login' => [
@@ -64,6 +64,11 @@ $pages = [
         'title' => 'Guardados',
         'view'  => '/public/views/publicaciones/guardados.php',
         'protegida' => true
+    ],
+    'publicacion' => [
+        'title' => 'Publicación',
+        'view'  => '/public/views/publicaciones/detalle.php',
+        'protegida' => false
     ],
 ];
 
@@ -88,6 +93,16 @@ if ($pages[$page]['protegida'] && $usuario === null) {
 if ($page === 'login' && $usuario !== null) {
     header('Location: index.php?page=' . urlencode($volver));
     exit;
+}
+
+//Validadr id de publicacion
+$idPublicacion = null;
+if ($page === 'publicacion') {
+    $idPublicacion = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT);
+    if ($idPublicacion === false || $idPublicacion <= 0) {
+        header('Location: index.php?page=inicio');
+        exit;
+    }
 }
 
 $pageTitle = $pages[$page]['title'];

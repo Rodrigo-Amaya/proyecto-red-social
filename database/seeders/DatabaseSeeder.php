@@ -17,6 +17,7 @@ require_once __DIR__ . "/UsuariosSeeder.php";
 
 // Registros de prueba
 require_once __DIR__ . "/PublicacionesSeeder.php";
+require_once __DIR__ . "/ComentariosSeeder.php";
 
 try {
 
@@ -33,6 +34,7 @@ try {
 
     // Registros de prueba
     seedPublicaciones($conn);
+    seedComentarios($conn);
 
     $conn->commit();
 

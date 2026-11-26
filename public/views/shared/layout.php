@@ -11,7 +11,10 @@ $baseUrl = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
 
     <link rel="stylesheet" href="<?= $baseUrl ?>/public/css/global.css">
     <link rel="stylesheet" href="<?= $baseUrl ?>/public/css/inicio.css">
-    <link rel="stylesheet" href="<?= $baseUrl ?>/public/css/pages.css">
+
+    <?php if ($currentPage === 'publicacion'): ?>
+        <link rel="stylesheet" href="<?= $baseUrl ?>/public/css/publicacion.css">
+    <?php endif; ?>
 
 </head>
 <body>
@@ -23,8 +26,14 @@ $baseUrl = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
         <?php require $contentView; ?>
     </main>
 
+    <script src="<?= $baseUrl ?>/public/js/sesion.js"></script>
+
     <?php if ($currentPage === 'inicio'): ?>
         <script src="<?= $baseUrl ?>/public/js/inicio.js"></script>
+    <?php endif; ?>
+
+    <?php if ($currentPage === 'publicacion'): ?>
+        <script src="<?= $baseUrl ?>/public/js/comentarios.js"></script>
     <?php endif; ?>
 </body>
 </html>

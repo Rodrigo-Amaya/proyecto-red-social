@@ -33,10 +33,9 @@ try {
         'usuarios'  => fn() => new usuarioController(new usuario($conn)),
         'auth'  => fn() => new AuthController(new usuario($conn)),
         'niveles'  => fn() => new NivelEstudioController(new NivelEstudio($conn)),
-        'publicaciones'  => fn() => new PublicacionController(new Publicacion($conn)),
+        'publicaciones'  => fn() => new publicacionController(new publicacion($conn)),
         'profesores'  => fn() => new profesoresController(new profesor($conn)),
-        'comentarios' => fn() => new comentarioController(new comentario($conn)),
-        'materias'  => fn() => new MateriaController(new Materia($conn)),
+        'materias'  => fn() => new materiaController(new materia($conn)),
     ];
 
     $recurso = $partes[0] ?? '';
@@ -46,7 +45,7 @@ try {
         return;
     }
 
-    // Identificar si se solicitan comentarios de una publicación
+    // publicaciones/{id}/comentario[/{idComentario}]
     if (
         $recurso === 'publicaciones' &&
         ($partes[2] ?? null) === 'comentario'
