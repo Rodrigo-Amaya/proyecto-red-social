@@ -105,7 +105,7 @@ $publicaciones = $publicaciones ?? [];
             </section>
 
         </div>
-        <aside class="panel-derecho">
+        <!--<aside class="panel-derecho">
 
             <section class="estadisticas">
                 <h2>
@@ -133,11 +133,7 @@ $publicaciones = $publicaciones ?? [];
                 </p>
             </section>
 
-        </aside>
+        </aside>-->
     </div>
-
-    <?php if ($usuario): ?>
-        <script src="<?= htmlspecialchars($baseUrl) ?>/public/js/notificaciones.js" defer></script>
-    <?php endif; ?>
 
 </section>

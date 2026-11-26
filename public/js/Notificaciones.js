@@ -67,6 +67,10 @@
                 return [n.actor, ` comentó en tu publicación ${titulo}`];
             case 'LIKE_COMENTARIO':
                 return [n.actor, ` le dio like a tu comentario en ${titulo}`];
+            case 'GUARDADO':
+                return [n.actor, ` guardó tu publicación ${titulo}`];
+            case 'RESPUESTA':
+                return [n.actor, ` respondió a tu comentario en ${titulo}`];
             case 'NUEVA_SOLICITUD':
                 return [n.actor, ' envió una solicitud para ser profesor'];
             default:
@@ -75,10 +79,11 @@
     }
 
     // Único sitio que decide a dónde lleva cada notificación.
-    // Cuando exista la vista de una publicación con sus comentarios, cámbialo aquí.
     function urlDestino(n) {
         if (n.tipo === 'NUEVA_SOLICITUD') return 'index.php?page=solicitudes';
-        if (n.id_publicacion) return `index.php?page=inicio#publicacion-${n.id_publicacion}`;
+        if (n.id_publicacion) {
+            return 'index.php?page=publicacion&id=' + encodeURIComponent(n.id_publicacion);
+        }
         return 'index.php?page=inicio';
     }
 

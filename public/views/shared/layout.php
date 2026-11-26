@@ -31,6 +31,10 @@ $baseUrl = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
 
     <script src="<?= $baseUrl ?>/public/js/sesion.js"></script>
 
+    <?php if ($usuario): ?>
+        <script src="<?= $baseUrl ?>/public/js/notificaciones.js" defer></script>
+    <?php endif; ?>
+
     <?php if ($currentPage === 'inicio'): ?>
         <script src="<?= $baseUrl ?>/public/js/inicio.js"></script>
     <?php elseif ($currentPage === 'guardados'): ?>
