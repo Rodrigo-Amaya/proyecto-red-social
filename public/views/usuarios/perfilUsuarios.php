@@ -53,7 +53,7 @@
     <div id="datosBasicos">
         <button onclick="regresar('<?= $baseUrl ?>/')">Regresar</button>
         <div id="panelDatosBasicos">
-            <img src="<?= $baseUrl ?>/<?= htmlspecialchars($usuario['url_foto'] ?? 'documentos/usuarios/imagenes/blank-profile-picture.png');?>" alt="Foto de perfil" width="150px">
+            <img class="foto-perfil" src="<?= $baseUrl ?>/<?= htmlspecialchars($usuario['url_foto'] ?? 'documentos/usuarios/imagenes/blank-profile-picture.png');?>" alt="Foto de perfil" width="150px" height="150px">
             <button onclick="abrirPanelFoto()">Cambiar Foto de Perfil</button>
             <h2><?= htmlspecialchars($usuario['nombre']) ?></h2>
             <p><?= htmlspecialchars($usuario['nivel']) ?></p>
@@ -103,18 +103,11 @@
             <label for="nivelEstudio">Nivel de estudio:</label><br>
             <select id="nivelEstudio" name="nivelEstudio">
                 <option value="">Seleccione un nivel educativo <h1>▾</h1></option>
-                <option value="1">Educacion Basica</option>
-                <option value="2">Bachillerato General</option>
-                <option value="3">Bachillerato Tecnico</option>
-                <option value="4">Tecnico Superior</option>
-                <option value="5">Educacion Universitaria</option>
-                <option value="6">Egresado Universitario</option>
-                <option value="7">Licenciatura</option>
-                <option value="8">Ingenieria</option>
-                <option value="9">Maestria</option>
-                <option value="10">Doctorado</option>
-                <option value="11">Postdoctorado</option>
-                <option value="12">Profesional</option>
+                <option value="1">Primaria</option>
+                <option value="2">Secundaria</option>
+                <option value="3">Bachillerato</option>
+                <option value="4">Universidad</option>
+                <option value="5">Maestria</option>
             </select>
             <button type="submit">Actualizar Infromación</button>
         </form>
