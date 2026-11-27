@@ -1,11 +1,12 @@
 <?php
-    session_start();
 
     //Solo pueden aplicar usuarios con sesión iniciada
     if (!isset($_SESSION['id_usuario'])) {
         header('Location: /public/views/auth/authPage.php');
         exit;
     }
+
+    ob_start();
 ?>
 
 <!DOCTYPE html>
@@ -13,8 +14,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../../css/auth.css">
-    <link rel="stylesheet" href="../../css/aplicacionProfesor.css">
+    <link rel="stylesheet" href="<?= $baseUrl ?>/public/css/auth.css">
+    <link rel="stylesheet" href="<?= $baseUrl ?>/public/css/aplicacionProfesor.css">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <title>Aplicar como profesor</title>
 </head>
@@ -91,6 +92,7 @@
             </form>
         </div>
     </div>
-    <script src="../../js/aplicacionProfesor.js"></script>
+    <script>window.APP_CONFIG = <?= json_encode(['api' => $baseUrl . '/api', 'baseUrl' => $baseUrl]) ?>;</script>
+<script src="<?= $baseUrl ?>/public/js/aplicacionProfesor.js"></script>
 </body>
 </html>

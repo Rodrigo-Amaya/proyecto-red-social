@@ -1,5 +1,5 @@
 <?php 
-    require_once __DIR__ . '/notificacion.php';
+    require_once __DIR__ . '/../../ModuloNotificaciones/Model/Notificacion.php';
 
     class Profesor {
         private mysqli $conn;

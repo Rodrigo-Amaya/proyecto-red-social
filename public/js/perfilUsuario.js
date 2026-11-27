@@ -12,12 +12,15 @@ function irASolicitudes(base){
 }
 
 function quieroSerProfesor(base){
-    window.location.href = base+'/public/views/profesores/aplicacionProfesor.php';
+    window.location.href = base + '/index.php?page=aplicacion-profesor';
 }
 
 function regresar(enlace){
     window.location.href = enlace;
 }
+
+const API = window.APP_CONFIG.api;
+const API_PERFIL = window.APP_CONFIG?.api;
 
 /*-----------------------------------------------------------------------------------------
                                 FORMULARIO DE ACTUALIZACIÓN
@@ -46,7 +49,7 @@ formularioActualizar.addEventListener('submit', async (e) => {
     };
 
     try {
-        const respuesta = await fetch(`http://localhost/proyecto-red-social/api/usuarios/${idUsuario}`, {
+        const respuesta = await fetch(`${API_PERFIL}/usuarios/${idUsuario}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
@@ -89,7 +92,7 @@ formularioFoto.addEventListener('submit', async (e) => {
     datos.append('imagen', imagen);
 
     try {
-        const respuesta = await fetch(`http://localhost/proyecto-red-social/api/usuarios/${idUsuario}/cambiarFoto`, {
+        const respuesta = await fetch(`${API_PERFIL}/usuarios/${idUsuario}/cambiarFoto`, {
             method: 'POST',
             credentials: 'same-origin',
             body: datos

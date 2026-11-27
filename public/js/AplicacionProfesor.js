@@ -1,6 +1,7 @@
 //Ajusta esta ruta a donde tengas montada tu API
 const URL_API_PROFESORES = '/api/profesores';
 const TAMANO_MAXIMO_MB = 5;
+const API = window.APP_CONFIG?.api;
 
 const formulario = document.getElementById('formAplicacionProfesor');
 const cajaError = document.getElementById('errorProfesor');
@@ -38,7 +39,7 @@ formulario.addEventListener('submit', async (e) => {
     boton.disabled = true;
 
     try {
-        const respuesta = await fetch('http://localhost/proyecto-red-social/api/profesores/', {
+        const respuesta = await fetch(`${API}/profesores/`, {
             method: 'POST',
             body: new FormData(formulario),
             credentials: 'same-origin'

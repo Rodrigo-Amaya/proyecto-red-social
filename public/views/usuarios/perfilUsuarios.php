@@ -8,7 +8,7 @@
     }
 
     //Obtenemos de la API
-    $url = "http://localhost/proyecto-red-social/api/usuarios/$id_usuario";
+    $url = "http://localhost$baseUrl/api/usuarios/$id_usuario";
     $respuesta = file_get_contents($url);
     $datos = json_decode($respuesta, true);
 
@@ -30,7 +30,7 @@
     //Si es profesor, buscamos la universidad y la carrera de su solicitud aprobada
     $aplicacion = null;
     if ($esProfesor) {
-        $urlAplicacion = "http://localhost/proyecto-red-social/api/profesores?usuario=$id_usuario&estado=APROBADA&orden=DESC";
+        $urlAplicacion = "http://localhost$baseUrl/api/profesores?usuario=$id_usuario&estado=APROBADA&orden=DESC";
         $respuestaAplicacion = @file_get_contents($urlAplicacion);
         $datosAplicacion = $respuestaAplicacion ? json_decode($respuestaAplicacion, true) : null;
 
@@ -129,6 +129,7 @@
         </form>
     </div>
     <div id="opacidad"></div>
+    <script>window.APP_CONFIG = { api: '<?= $baseUrl ?>/api', baseUrl: '<?= $baseUrl ?>' };</script>
     <script>
         const idUsuario = <?= json_encode($_SESSION['id_usuario']) ?>;
     </script>

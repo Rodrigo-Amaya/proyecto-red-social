@@ -2,6 +2,24 @@
    AJUSTES PARA EL FORMULARIO DE APLICACIÓN A PROFESOR
    (se carga después de auth.css y reutiliza sus colores)
 -----------------------------------------------------------*/
+
+body {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: flex-start;
+    height: auto;
+    min-height: 100vh;
+    margin: 0;
+}
+
+.main-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
 .contenedorProfesor {
     width: 55vw; height: 88vh;
 }
@@ -49,6 +67,7 @@ input[type="file"]::file-selector-button {
     color: var(--texto-etiquetas);
     cursor: pointer;
 }
+
 
 /*---Mensajes---*/
 #errorProfesor, #exitoProfesor {
