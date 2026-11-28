@@ -90,6 +90,11 @@ $pages = [
         'protegida' => true,
         'admin' => true
     ],
+    'aplicacion-profesor' => [
+        'title' => 'Aplicacion Profesor',
+        'view'  => '/public/views/profesores/aplicacionProfesor.php',
+        'protegida' => false
+    ],
 ];
 
 $page = $_GET['page'] ?? 'inicio';

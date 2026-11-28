@@ -1,6 +1,6 @@
 //Misma ruta base que usa perfilUsuario.js
-const URL_API_PROFESORES = 'http://localhost/proyecto-red-social/api/profesores';
-
+const API = window.APP_CONFIG.api;
+const URL_API_PROFESORES = `${API}/profesores`;
 const TEXTO_ESTADO = {
     PENDIENTE: 'Primera revisión',
     EN_SEGUNDA_REVISION: 'Segunda revisión',

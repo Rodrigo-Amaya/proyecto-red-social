@@ -285,35 +285,38 @@
 
         //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         //========== IMAGEN DE PERFIL ==========
+        // Raíz del proyecto (ajusta los niveles según donde esté este archivo)
+        private const RUTA_DOCUMENTOS = __DIR__ . '/../../../documentos/usuarios/';
+
         public function guardarImagenPerfil($imagen, $idUsuario){
             $extension = validarDocumento($imagen);
-            //Si no regreso una extencion
-            if ($extension === false) {
+            if ($extension === false || !in_array($extension, ["jpg", "png", "webp"], true)) {
                 return false;
             }
 
             $subdirectorio = 'imagenes/';
+            $directorio = self::RUTA_DOCUMENTOS . $subdirectorio;
 
-            //Si no es una imagen
-            if (!in_array($extension, ["jpg", "png", "webp"])) {
+            // Crear directorio si no existe
+            if (!is_dir($directorio) && !mkdir($directorio, 0755, true) && !is_dir($directorio)) {
+                error_log("No se pudo crear el directorio: $directorio");
                 return false;
             }
 
-            $directorio = __DIR__ . '/../../../documentos/usuarios/' . $subdirectorio;
-
-            // Crear directorio si no existe...
-
-            $nombre = "imagen_perfil_usuario_{$idUsuario}" . uniqid() . ".{$extension}";
-
+            $nombre = "imagen_perfil_usuario_{$idUsuario}_" . uniqid() . ".{$extension}";
             $rutaFisica = $directorio . $nombre;
 
+            error_log("DEBUG dir real: " . realpath($directorio));
+error_log("DEBUG existe: " . var_export(is_dir($directorio), true));
+error_log("DEBUG escribible: " . var_export(is_writable($directorio), true));
+error_log("DEBUG tmp existe: " . var_export(is_uploaded_file($imagen['tmp_name']), true));
             if (!move_uploaded_file($imagen['tmp_name'], $rutaFisica)) {
+                error_log("move_uploaded_file falló hacia: $rutaFisica");
                 return false;
             }
 
             return "documentos/usuarios/" . $subdirectorio . $nombre;
         }
-
         public function cambiarImagenPerfil($idUsuario, $imagen){
             $validacion = $this->validarCambioImagen($idUsuario);
 
