@@ -4,7 +4,7 @@
 // y, opcional, $filtrosHtml (formulario de filtros propio de cada vista).
 $fotoAdmin = $usuario['url_foto'] ?: 'documentos/usuarios/imagenes/blank-profile-picture.png';
 ?>
-<button type="button" onclick="location.href='index.php?page=perfil'">Regresar</button>
+<button id="btnRegresar" type="button" onclick="location.href='index.php?page=perfil'">Regresar</button>
 <div id="panelDatosBasicos">
     <img src="<?= $baseUrl ?>/<?= htmlspecialchars($fotoAdmin) ?>" alt="Foto de perfil" width="150px">
     <h2><?= htmlspecialchars($usuario['nombre']) ?></h2>

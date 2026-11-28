@@ -21,7 +21,7 @@ $baseUrl = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
     <?php endif; ?>
 </head>
 <body>
-    <?php if (!in_array($currentPage, ['login', 'perfil'], true)): ?>
+    <?php if (!in_array($currentPage, ['login'], true)): ?>
         <?php require __DIR__ . '/sidebar.php'; ?>
     <?php endif; ?>
 

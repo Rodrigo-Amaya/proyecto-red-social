@@ -19,23 +19,122 @@ function regresar(enlace){
     window.location.href = enlace;
 }
 
+const imagenPerfil = document.getElementById('imagenPerfil');
+const nombreArchivo = document.getElementById('nombreArchivo');
+
+imagenPerfil.addEventListener('change', () => {
+    nombreArchivo.textContent = imagenPerfil.files.length > 0
+        ? imagenPerfil.files[0].name
+        : 'Ningún archivo seleccionado';
+});
+
 const API = window.APP_CONFIG.api;
 const API_PERFIL = window.APP_CONFIG?.api;
+// Elementos del formulario
+const formularioActualizar = document.getElementById('formActualizarInfo');
+const contrasenaNueva = document.getElementById('contrasenaNueva');
+const contrasenaValidar = document.getElementById('contrasenaValidar');
+const errorContrasena = document.getElementById('errorContrasenaNueva');
+const mensajeRequisitos = document.getElementById('requisitosContrasena');
+
+/*-----------------------------------------------------------------------------------------
+                                ERRORES CONTRASEÑA
+-----------------------------------------------------------------------------------------*/
+const requisitos = {
+    longitud: /.{8,}/,
+    mayuscula: /[A-Z]/,
+    numero: /\d/,
+    especial: /[^A-Za-z0-9]/
+};
+
+// Validar mientras escribe la nueva contraseña
+contrasenaNueva.addEventListener('input', () => {
+    const valor = contrasenaNueva.value;
+    const mensaje = document.getElementById('requisitosContrasena');
+
+    if (valor.length < 8) {
+        mensaje.textContent = 'La contraseña debe tener al menos 8 caracteres.';
+        mensaje.style.color = 'red';
+    } 
+    else if (!/[A-Z]/.test(valor)) {
+        mensaje.textContent = 'La contraseña debe tener al menos una mayúscula.';
+        mensaje.style.color = 'red';
+    } 
+    else if (!/\d/.test(valor)) {
+        mensaje.textContent = 'La contraseña debe tener al menos un número.';
+        mensaje.style.color = 'red';
+    } 
+    else if (!/[^A-Za-z0-9]/.test(valor)) {
+        mensaje.textContent = 'La contraseña debe tener al menos un carácter especial.';
+        mensaje.style.color = 'red';
+    } 
+    else {
+        mensaje.textContent = 'La contraseña cumple todos los requisitos';
+        mensaje.style.color = 'green';
+    }
+
+    validarCoincidencia();
+});
+
+// Validar mientras escribe la confirmación
+contrasenaValidar.addEventListener('input', validarCoincidencia);
+
+function validarCoincidencia() {
+    if (contrasenaValidar.value === '') {
+        errorContrasena.textContent = '';
+        return false;
+    }
+
+    if (contrasenaNueva.value !== contrasenaValidar.value) {
+        errorContrasena.textContent = 'Las contraseñas no coinciden';
+        errorContrasena.style.color = 'red';
+        return false;
+    }
+
+    errorContrasena.textContent = 'Las contraseñas coinciden';
+    errorContrasena.style.color = 'green';
+    return true;
+}
+
+// Comprobar todos los requisitos
+function contrasenaValida() {
+    const valor = contrasenaNueva.value;
+
+    return Object.values(requisitos).every(regex => regex.test(valor));
+}
 
 /*-----------------------------------------------------------------------------------------
                                 FORMULARIO DE ACTUALIZACIÓN
 -----------------------------------------------------------------------------------------*/
-const formularioActualizar = document.getElementById('formActualizarInfo');
+
 
 formularioActualizar.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    if (contrasenaNueva.value !== '') {
+
+        if (!contrasenaValida()) {
+            alert('La nueva contraseña no cumple los requisitos.');
+            return;
+        }
+
+        if (contrasenaNueva.value !== contrasenaValidar.value) {
+            alert('Las contraseñas no coinciden.');
+            return;
+        }
+
+        if(document.getElementById('contrasenaActual').value === ''){
+            alert('Ingrese su contraseña actual.');
+            return;
+        }
+    }
 
     //Datos enviados del formulario
     const nombre = document.getElementById('nombreActualizar').value;
     const correo = document.getElementById('correoActualizar').value;
     const contrasenaAnterior = document.getElementById('contrasenaActual').value;
     const contrasena = document.getElementById('contrasenaNueva').value;
-    const contrasenaValidar = document.getElementById('contrasenaValidar').value;
+    const contrasenaValidacion = contrasenaValidar.value;
     const nivel = document.getElementById('nivelEstudio').value;
 
     //JSON
@@ -44,7 +143,7 @@ formularioActualizar.addEventListener('submit', async (e) => {
         correo: correo || null,
         contrasenaAnterior: contrasenaAnterior || null,
         contrasenaNueva: contrasena || null,
-        contrasenaNuevaValidar: contrasenaValidar || null,
+        contrasenaNuevaValidar: contrasenaValidacion || null,
         nivelEstudio: nivel !== '' ? Number(nivel) : null
     };
 

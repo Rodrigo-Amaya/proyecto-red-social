@@ -1,0 +1,14 @@
+#botonSalir{
+    background-color: white;
+    color: #253D35;
+    max-height: 20px;
+}
+
+#formRevision{
+    justify-content: center; align-items: center;
+    padding-top: 50px;
+}
+button {
+    background-color: #EEF1E8;
+    color: #253D35;
+}

@@ -2,7 +2,6 @@
    SOLICITUDES DE PROFESORES (se carga después de perfilUsuario.css
    y reutiliza sus colores, paneles, inputs y botones)
 -----------------------------------------------------------*/
-
 /*---Panel izquierdo: filtros---*/
 #formFiltros {
     width: 100%;
@@ -133,6 +132,13 @@
 .btnRechazar, #panelRevision .btnRechazar {
     background-color: var(--color-error-fondo); color: var(--color-error-texto);
 }
+.btnRechazar:hover{
+    background-color: var(--color-error-borde);
+}
+
+#panelRevision .btnAprobar{
+    background-color: var(--color-secundario); color: var(--texto);
+}
 
 /*---Panel de revision (mismo estilo que el de cambiar foto)---*/
 #panelRevision {
@@ -162,6 +168,12 @@
     color: var(--texto);
     white-space: pre-wrap;
     font-family: inherit;
+}
+
+#botonSalir{
+    background-color: white;
+    color: #253D35;
+    max-height: 20px;
 }
 
 /*---Móvil---*/

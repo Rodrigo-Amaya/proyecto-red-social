@@ -38,6 +38,7 @@
     <link rel="stylesheet" href="<?= $baseUrl ?>/public/css/perfilUsuario.css">
     <link rel="stylesheet" href="<?= $baseUrl ?>/public/css/admin.css">
     <link rel="stylesheet" href="<?= $baseUrl ?>/public/css/gestionUsuarios.css">
+    <link rel="stylesheet" href="<?= $baseUrl ?>/public/css/solicitudes.css">
     <title>Solicitudes de profesores</title>
 </head>
 <body>

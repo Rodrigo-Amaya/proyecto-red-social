@@ -307,9 +307,9 @@
             $rutaFisica = $directorio . $nombre;
 
             error_log("DEBUG dir real: " . realpath($directorio));
-error_log("DEBUG existe: " . var_export(is_dir($directorio), true));
-error_log("DEBUG escribible: " . var_export(is_writable($directorio), true));
-error_log("DEBUG tmp existe: " . var_export(is_uploaded_file($imagen['tmp_name']), true));
+            error_log("DEBUG existe: " . var_export(is_dir($directorio), true));
+            error_log("DEBUG escribible: " . var_export(is_writable($directorio), true));
+            error_log("DEBUG tmp existe: " . var_export(is_uploaded_file($imagen['tmp_name']), true));
             if (!move_uploaded_file($imagen['tmp_name'], $rutaFisica)) {
                 error_log("move_uploaded_file falló hacia: $rutaFisica");
                 return false;
@@ -324,6 +324,9 @@ error_log("DEBUG tmp existe: " . var_export(is_uploaded_file($imagen['tmp_name']
                 return 1;
             }
 
+            // Foto actual (para borrarla después de guardar la nueva)
+            $fotoAnterior = $this->obtenerUrlFoto($idUsuario);
+
             $ruta = $this->guardarImagenPerfil($imagen, $idUsuario);
 
             if($ruta === false) {
@@ -332,10 +335,49 @@ error_log("DEBUG tmp existe: " . var_export(is_uploaded_file($imagen['tmp_name']
 
             $sql = "UPDATE usuarios SET url_foto = ? WHERE id_usuario = ?";
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("si", $ruta, $idUsuario); 
-            $stmt->execute();
+            $stmt->bind_param("si", $ruta, $idUsuario);
+
+            // Si falla la BD, se borra la imagen nueva para no dejar archivos huérfanos
+            if(!$stmt->execute()){
+                $this->eliminarArchivoPerfil($ruta);
+                return 2;
+            }
+
+            // Todo salió bien: ahora sí se elimina la anterior
+            if($fotoAnterior && $fotoAnterior !== $ruta){
+                $this->eliminarArchivoPerfil($fotoAnterior);
+            }
 
             return 0;
+        }
+
+        private function obtenerUrlFoto($idUsuario){
+            $sql = "SELECT url_foto FROM usuarios WHERE id_usuario = ?";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("i", $idUsuario);
+            $stmt->execute();
+            $fila = $stmt->get_result()->fetch_assoc();
+            return $fila['url_foto'] ?? null;
+        }
+
+        // Elimina una foto de perfil del disco, solo si está dentro de la carpeta de imágenes
+        private function eliminarArchivoPerfil($urlFoto){
+            if(!$urlFoto || strpos($urlFoto, 'blank-profile-picture') !== false){
+                return; // sin foto o foto por defecto: no se toca
+            }
+
+            $directorio = realpath(self::RUTA_DOCUMENTOS . 'imagenes/');
+            // basename evita rutas tipo ../../ guardadas en la BD
+            $archivo = realpath(self::RUTA_DOCUMENTOS . 'imagenes/' . basename($urlFoto));
+
+            // Debe existir y estar realmente dentro de la carpeta de imágenes
+            if($directorio === false || $archivo === false || strpos($archivo, $directorio . DIRECTORY_SEPARATOR) !== 0){
+                return;
+            }
+
+            if(is_file($archivo) && !@unlink($archivo)){
+                error_log("No se pudo eliminar la foto anterior: $archivo");
+            }
         }
 
         public function validarCambioImagen($usuario){

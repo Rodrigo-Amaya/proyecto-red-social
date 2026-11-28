@@ -85,16 +85,39 @@
         for (const u of usuarios) lista.append(tarjetaUsuario(u));
     }
 
+    // Inicial del nombre (soporta tildes, Ñ y emojis)
+    function inicialDe(nombre) {
+        const primera = Array.from(String(nombre ?? '').trim())[0];
+        return primera ? primera.toLocaleUpperCase('es') : '?';
+    }
+
+    function crearInicial(nombre) {
+        return el('div', { class: 'usuarioInicial', 'aria-hidden': 'true' }, inicialDe(nombre));
+    }
+
+    // Foto del usuario, o su inicial si no tiene foto o la imagen no carga
+    function crearAvatar(u) {
+        const url = u.url_foto || '';
+        const tieneFoto = url !== '' && !url.includes('blank-profile-picture');
+
+        if (!tieneFoto) return crearInicial(u.nombre);
+
+        const img = el('img', {
+            class: 'usuarioFoto',
+            src: `${baseUrl}/${url}`,
+            alt: '',
+            width: '56', height: '56'
+        });
+        // Si la imagen falla (archivo borrado, ruta mala), se reemplaza por la inicial
+        img.addEventListener('error', () => img.replaceWith(crearInicial(u.nombre)), { once: true });
+        return img;
+    }
+
     function tarjetaUsuario(u) {
         const bloqueado = Number(u.bloqueo_usuario) === 1;
         const esYo = Number(u.id_usuario) === idUsuario;
 
-        const foto = el('img', {
-            class: 'usuarioFoto',
-            src: `${baseUrl}/${u.url_foto || FOTO_POR_DEFECTO}`,
-            alt: '',
-            width: '56', height: '56'
-        });
+        const foto = crearAvatar(u);
 
         const acciones = el('div', { class: 'usuarioAcciones' });
         if (esYo) {
