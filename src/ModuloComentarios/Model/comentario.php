@@ -1,5 +1,4 @@
 <?php 
-    require_once __DIR__ . '/notificacion.php';
 
     class Comentario {
         private mysqli $conn;
@@ -253,9 +252,22 @@
 
                 $this->conn->commit();
 
-                //Notificar al autor de la publicacion (si falla, el comentario ya quedo guardado)
+                //Notificaciones
+                $notificaciones = new Notificacion($this->conn);
+
+                //Respuesta: avisa al autor del comentario padre
+                $avisado = null;
+                if ($comentarioPadre !== null) {
+                    try {
+                        $avisado = $notificaciones->notificarRespuesta($idComentario, $comentarioPadre, $usuario);
+                    } catch (Throwable $e) {
+                        error_log('No se pudo crear la notificación de respuesta: ' . $e->getMessage());
+                    }
+                }
+
+                //Avisa al autor de la publicacion, salvo que ya recibio el aviso de respuesta
                 try {
-                    (new Notificacion($this->conn))->notificarComentario($idComentario, $publicacion, $usuario);
+                    $notificaciones->notificarComentario($idComentario, $publicacion, $usuario, $avisado);
                 } catch (Throwable $e) {
                     error_log('No se pudo crear la notificación de comentario: ' . $e->getMessage());
                 }

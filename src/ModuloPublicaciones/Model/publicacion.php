@@ -257,6 +257,13 @@
                 return 3;
             }
 
+            // Avisar al autor
+            try {
+                (new Notificacion($this->conn))->notificarGuardado($idPublicacion, $idUsuario);
+            } catch (Throwable $e) {
+                error_log('No se pudo crear la notificación de guardado: ' . $e->getMessage());
+            }
+
             return 0;
         }
 
@@ -280,6 +287,12 @@
 
             if (!$eliminado) {
                 return 2;
+            }
+
+            try {
+                (new Notificacion($this->conn))->retirarGuardado($idPublicacion, $idUsuario);
+            } catch (Throwable $e) {
+                error_log('No se pudo retirar la notificación de guardado: ' . $e->getMessage());
             }
 
             return 0;
@@ -360,14 +373,6 @@
                 $publicacion['documentos'] =
                     $this->obtenerArchivosPublicacion($idPublicacion);
 
-                // Comentarios, respuestas, documentos y likes
-                $comentarios = $this->comentariosCompletos(
-                    $idPublicacion,
-                    $idUsuario
-                );
-
-                $publicacion['comentarios'] =
-                    $this->construirArbolComentarios($comentarios);
             }
 
             unset($publicacion);
@@ -762,6 +767,11 @@
             $fila = $stmt->get_result()->fetch_assoc();
             $stmt->close();
             return $fila['nombre'] ?? null;
+        }
+
+        //Validar si el usuario es administrador activo
+        public function esAdministrador(int $usuario): bool {
+            return $this->rolDeUsuario($usuario) === 'ADMINISTRADOR';
         }
 
         //Validar ventana de edicion

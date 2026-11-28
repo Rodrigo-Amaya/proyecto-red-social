@@ -17,7 +17,6 @@ async function iniciarFeed(feed) {
 
     const haySesion = feed.dataset.sesion === '1';
     const urlLogin = feed.dataset.login;
-    const idUsuario = Number(feed.dataset.usuario);
     const publicacionesGuardadas = new Set();
 
     // Carrusel de materias
@@ -43,10 +42,7 @@ async function iniciarFeed(feed) {
         if (!haySesion) return;
 
         try {
-            const respuesta = await fetch(
-                `${api}/publicaciones/guardadas?id_usuario=${idUsuario}`
-            );
-
+            const respuesta = await fetch(`${api}/publicaciones/guardadas`);
             const datos = await respuesta.json();
 
             if (!respuesta.ok || !datos.success) {
@@ -80,20 +76,20 @@ async function iniciarFeed(feed) {
         try {
             const respuesta = await fetch(
                 `${api}/publicaciones/${idPublicacion}/guardar`,
-                {
-                    method: yaGuardada ? 'DELETE' : 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        id_usuario: idUsuario
-                    })
-                }
+                { method: yaGuardada ? 'DELETE' : 'POST' }
             );
+
+            if (respuesta.status === 401) {
+                window.location.href = urlLogin;
+                return;
+            }
 
             const datos = await respuesta.json();
 
-            if (!respuesta.ok || !datos.success) {
+            // 409: ya estaba guardada
+            const yaEstabaGuardada = !yaGuardada && respuesta.status === 409;
+
+            if (!yaEstabaGuardada && (!respuesta.ok || !datos.success)) {
                 throw new Error(datos.mensaje || 'No se pudo actualizar el guardado');
             }
 

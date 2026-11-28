@@ -6,7 +6,6 @@ if (listaGuardados) {
 
 function iniciarGuardados(contenedor) {
     const api = contenedor.dataset.api;
-    const idUsuario = Number(contenedor.dataset.usuario);
     const vacio = document.getElementById('guardados-vacio');
     const error = document.getElementById('guardados-error');
 
@@ -19,6 +18,16 @@ function iniciarGuardados(contenedor) {
         }
 
         return elemento;
+    }
+
+    function crearAvatar(url, nombre) {
+        if (url) {
+            const img = crear('img', 'avatar');
+            img.src = url;
+            img.alt = 'Foto de ' + (nombre || 'usuario');
+            return img;
+        }
+        return crear('span', 'avatar avatar-inicial', (nombre || 'U').charAt(0).toUpperCase());
     }
 
     function agregarDocumentos(contenedor, documentos) {
@@ -38,68 +47,13 @@ function iniciarGuardados(contenedor) {
         contenedor.appendChild(lista);
     }
 
-    function crearComentario(comentario) {
-        const elemento = crear('article', 'comentario-guardado');
-
-        const cabecera = crear('div', 'comentario-autor');
-
-        cabecera.appendChild(
-            crear('strong', '', comentario.autor || 'Usuario')
-        );
-
-        if (comentario.fecha) {
-            cabecera.appendChild(
-                crear('small', '', comentario.fecha)
-            );
-        }
-
-        elemento.appendChild(cabecera);
-
-        if (comentario.titulo) {
-            elemento.appendChild(
-                crear('h4', '', comentario.titulo)
-            );
-        }
-
-        elemento.appendChild(
-            crear('p', 'comentario-mensaje', comentario.mensaje)
-        );
-
-        agregarDocumentos(elemento, comentario.documentos);
-
-        const likes = crear(
-            'small',
-            'comentario-likes',
-            `Me gusta: ${comentario.total_likes ?? 0}`
-        );
-
-        elemento.appendChild(likes);
-
-        if (Array.isArray(comentario.respuestas) && comentario.respuestas.length > 0) {
-            const respuestas = crear('div', 'respuestas-guardadas');
-
-            comentario.respuestas.forEach(respuesta => {
-                respuestas.appendChild(crearComentario(respuesta));
-            });
-
-            elemento.appendChild(respuestas);
-        }
-
-        return elemento;
-    }
-
     function crearTarjeta(publicacion) {
         const articulo = crear('article', 'publicacion');
         articulo.dataset.id = publicacion.id_publicacion;
 
         const cabecera = crear('header', 'publicacion-autor');
 
-        if (publicacion.url_foto) {
-            const foto = document.createElement('img');
-            foto.src = publicacion.url_foto;
-            foto.alt = `Foto de ${publicacion.autor || 'usuario'}`;
-            cabecera.appendChild(foto);
-        }
+        cabecera.appendChild(crearAvatar(publicacion.url_foto, publicacion.autor));
 
         const info = crear('div', 'publicacion-info');
 
@@ -121,10 +75,14 @@ function iniciarGuardados(contenedor) {
 
         articulo.appendChild(cabecera);
 
+        const urlDetalle = 'index.php?page=publicacion&id=' + encodeURIComponent(publicacion.id_publicacion);
+
         if (publicacion.titulo) {
-            articulo.appendChild(
-                crear('p', 'publicacion-titulo', publicacion.titulo)
-            );
+            const titulo = crear('p', 'publicacion-titulo');
+            const enlaceTitulo = crear('a', 'publicacion-enlace', publicacion.titulo);
+            enlaceTitulo.href = urlDetalle;
+            titulo.appendChild(enlaceTitulo);
+            articulo.appendChild(titulo);
         }
 
         articulo.appendChild(
@@ -132,28 +90,6 @@ function iniciarGuardados(contenedor) {
         );
 
         agregarDocumentos(articulo, publicacion.documentos);
-
-        const likes = crear(
-            'p',
-            'publicacion-likes',
-            `Me gusta: ${publicacion.total_likes ?? 0}`
-        );
-
-        articulo.appendChild(likes);
-
-        if (Array.isArray(publicacion.comentarios) && publicacion.comentarios.length > 0) {
-            const seccionComentarios = crear('section', 'comentarios-guardados');
-
-            seccionComentarios.appendChild(
-                crear('h3', '', 'Comentarios y respuestas')
-            );
-
-            publicacion.comentarios.forEach(comentario => {
-                seccionComentarios.appendChild(crearComentario(comentario));
-            });
-
-            articulo.appendChild(seccionComentarios);
-        }
 
         const acciones = crear('footer', 'publicacion-acciones');
 
@@ -164,6 +100,10 @@ function iniciarGuardados(contenedor) {
             quitarGuardado(publicacion.id_publicacion, articulo, quitar);
         });
 
+        const verDetalle = crear('a', 'enlace-detalle', 'Ver detalle');
+        verDetalle.href = urlDetalle;
+
+        acciones.appendChild(verDetalle);
         acciones.appendChild(quitar);
         articulo.appendChild(acciones);
 
@@ -176,15 +116,7 @@ function iniciarGuardados(contenedor) {
         try {
             const respuesta = await fetch(
                 `${api}/publicaciones/${idPublicacion}/guardar`,
-                {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        id_usuario: idUsuario
-                    })
-                }
+                { method: 'DELETE' }
             );
 
             const datos = await respuesta.json();
@@ -212,9 +144,7 @@ function iniciarGuardados(contenedor) {
         contenedor.querySelectorAll('.publicacion').forEach(p => p.remove());
 
         try {
-            const respuesta = await fetch(
-                `${api}/publicaciones/guardadas?id_usuario=${idUsuario}`
-            );
+            const respuesta = await fetch(`${api}/publicaciones/guardadas`);
 
             const datos = await respuesta.json();
 

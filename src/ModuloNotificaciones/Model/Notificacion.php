@@ -8,6 +8,8 @@
         public const TIPO_COMENTARIO = 'COMENTARIO';
         public const TIPO_LIKE_COMENTARIO = 'LIKE_COMENTARIO';
         public const TIPO_NUEVA_SOLICITUD = 'NUEVA_SOLICITUD';
+        public const TIPO_GUARDADO = 'GUARDADO';
+        public const TIPO_RESPUESTA = 'RESPUESTA';
 
         public function __construct($dbConnection){
             $this->conn = $dbConnection;
@@ -107,16 +109,18 @@
         }
 
         //Alguien comento en una publicacion: avisa al autor de la publicacion
-        public function notificarComentario(int $idComentario, int $idPublicacion, int $idActor): void {
+        //$omitir: usuario que ya recibio un aviso
+        public function notificarComentario(int $idComentario, int $idPublicacion, int $idActor, ?int $omitir = null): void {
             $fecha = $this->fechaActual();
+            $omitir = $omitir ?? 0; //ningun usuario tiene id 0
             $sql = "INSERT INTO notificaciones (id_usuario, id_actor, tipo, id_referencia, id_publicacion, fecha)
                 SELECT p.id_usuario, ?, 'COMENTARIO', ?, p.id_publicacion, ?
                 FROM publicaciones p
                 JOIN usuarios u ON u.id_usuario = p.id_usuario
-                WHERE p.id_publicacion = ? AND p.id_usuario <> ? AND u.bloqueo_usuario = 0
+                WHERE p.id_publicacion = ? AND p.id_usuario <> ? AND p.id_usuario <> ? AND u.bloqueo_usuario = 0
                 ON DUPLICATE KEY UPDATE id_notificacion = id_notificacion";
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("iisii", $idActor, $idComentario, $fecha, $idPublicacion, $idActor);
+            $stmt->bind_param("iisiii", $idActor, $idComentario, $fecha, $idPublicacion, $idActor, $omitir);
             $stmt->execute();
             $stmt->close();
         }
@@ -142,6 +146,66 @@
             $stmt->bind_param("ii", $idComentario, $idActor);
             $stmt->execute();
             $stmt->close();
+        }
+
+         //Alguien guardo una publicacion: avisa a su autor
+        public function notificarGuardado(int $idPublicacion, int $idActor): void {
+            $fecha = $this->fechaActual();
+            $sql = "INSERT INTO notificaciones (id_usuario, id_actor, tipo, id_referencia, id_publicacion, fecha)
+                SELECT p.id_usuario, ?, 'GUARDADO', p.id_publicacion, p.id_publicacion, ?
+                FROM publicaciones p
+                JOIN usuarios u ON u.id_usuario = p.id_usuario
+                WHERE p.id_publicacion = ? AND p.id_usuario <> ? AND u.bloqueo_usuario = 0
+                ON DUPLICATE KEY UPDATE id_notificacion = id_notificacion";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("isii", $idActor, $fecha, $idPublicacion, $idActor);
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        //Se quito el guardado: se retira la notificacion
+        public function retirarGuardado(int $idPublicacion, int $idActor): void {
+            $stmt = $this->conn->prepare("DELETE FROM notificaciones WHERE tipo = 'GUARDADO' AND id_referencia = ? AND id_actor = ?");
+            $stmt->bind_param("ii", $idPublicacion, $idActor);
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        //Alguien respondio a un comentario: avisa al autor del comentario padre.
+        //Devuelve el id del destinatario, o null si no se avisó a nadie
+        public function notificarRespuesta(int $idRespuesta, int $idPadre, int $idActor): ?int {
+            $stmt = $this->conn->prepare(
+                "SELECT c.id_usuario, c.id_publicacion
+                 FROM comentarios c
+                 JOIN usuarios u ON u.id_usuario = c.id_usuario
+                 WHERE c.id_comentario = ? AND c.bloquear = 0 AND u.bloqueo_usuario = 0"
+            );
+            $stmt->bind_param("i", $idPadre);
+            $stmt->execute();
+            $padre = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+
+            if (!$padre) {
+                return null;
+            }
+
+            $destinatario = (int)$padre['id_usuario'];
+            if ($destinatario === $idActor) {
+                return null;
+            }
+
+            $idPublicacion = (int)$padre['id_publicacion'];
+            $fecha = $this->fechaActual();
+            $stmt = $this->conn->prepare(
+                "INSERT INTO notificaciones (id_usuario, id_actor, tipo, id_referencia, id_publicacion, fecha)
+                 VALUES (?, ?, 'RESPUESTA', ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE id_notificacion = id_notificacion"
+            );
+            $stmt->bind_param("iiiis", $destinatario, $idActor, $idRespuesta, $idPublicacion, $fecha);
+            $stmt->execute();
+            $stmt->close();
+
+            return $destinatario;
         }
 
         //Nueva solicitud de profesor: avisa a todos los administradores activos
